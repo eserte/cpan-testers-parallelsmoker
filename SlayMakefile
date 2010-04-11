@@ -72,6 +72,7 @@
 		}
 
 		$CONFIG->{want_mod_comparison} = (exists $CONFIG->{mod1} && exists $CONFIG->{mod2});
+		$CONFIG->{run_in} ||= 'xterm';
 
 		{ local $SIG{__WARN__} = sub {}; # lock_hashref_recurse is noisy
 		  Hash::Util::lock_hashref_recurse($CONFIG);
@@ -146,6 +147,18 @@
 			$? == 0 or die "install failed";
 		};
 	}
+
+	sub cpan_smoke_modules_cmd {
+		my($args) = @_;
+		("./utils/cpan_smoke_modules", "-batch", @$args);
+	}
+
+	sub cpan_smoke_modules {
+		my($args) = @_;
+		my @cmd = cpan_smoke_modules_cmd($args);
+		system(@cmd);
+		die "Command failed '@cmd': $?" if $? != 0;
+	}
 }
 
 all:
@@ -186,8 +199,8 @@ prepare-smoker-modules:
 	{
 		# XXX should handle devel perl versions (with perlver)
 		for my $key (qw(perl1 perl2)) {
-			system("./utils/cpan_smoke_modules", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
-			"-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter));
+			cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+					    "-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter)]);
 		}
 	}
 
@@ -245,10 +258,8 @@ install-mod:
 				my($key, $modkey) = @$def;
 				my $url = $CONFIG->{$modkey}->{url};
 				die "No url set in mod1/mod2" if !$url;
-				my @cmd = ("./utils/cpan_smoke_modules", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install",
-					   $url);
-				system(@cmd);
-				die "Failed @cmd: $?" if $? != 0;
+				cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+						    "-install", $url]);
 			}
 		}
 	}
@@ -260,16 +271,28 @@ start-smoking:
 			die "$modlist was not yet created, please run create-modlist rule"; # XXX should be done automatically
 		}
 		for my $key (qw(perl1 perl2)) {
-			my $geom = $key eq 'perl1' ? '+0+0' : '-0+0';
-			# XXX would nice to have it alternatively in two screen windows
-			# XXX or support for other terminal emulators
-			my @cmd = ("xterm",
-				   "-geometry", $geom,
-				   "-T", "smoking $key",
-				   "-e", "./utils/cpan_smoke_modules", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist);
-			if (fork == 0) {
-				exec(@cmd);
-				die "@cmd failed: $!";
+			my @smoke_cmd = cpan_smoke_modules_cmd(["-skiptested", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist]);
+		# XXXX support for other terminal emulators?
+			if ($CONFIG->{run_in} eq 'screen') {
+				# XXX or alternatively use "screen -list" and check for "(Attached)" string
+				die "You're probably not running in a screen (TERM is not 'screen')" if $ENV{TERM} ne 'screen';
+				die "You're probably not running in a screen (STY is missing)" if !$ENV{STY};
+				# XXX maybe use -L for additional logging?
+				my @cmd = ("screen", "-t", "smoke $CONFIG->{testlabel} $key", @smoke_cmd);
+				if (fork == 0) {
+					exec(@cmd);
+					die "@cmd failed: $!";
+				}
+			} else {
+				my $geom = $key eq 'perl1' ? '+0+0' : '-0+0';
+				my @cmd = ("xterm",
+					   "-geometry", $geom,
+					   "-T", "smoking $key",
+					   "-e", @smoke_cmd);
+				if (fork == 0) {
+					exec(@cmd);
+					die "@cmd failed: $!";
+				}
 			}
 		}
 	}
