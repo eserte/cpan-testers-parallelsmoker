@@ -104,7 +104,8 @@ Existing tools: private C<cpandisthasfile.pl>.
 =item * For testing different versions of any modules find the modules
 depending on the modules to test.
 
-Existing tools: cpants (but is down for a long time).
+Existing tools: cpants (but is down for a long time), L<CPANDB>.
+Former art: L<Test::DependentModules>.
 
 =back
 
