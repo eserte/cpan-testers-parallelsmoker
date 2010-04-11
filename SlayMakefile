@@ -3,7 +3,7 @@
 	use File::Basename qw(basename dirname);
 	use File::Path qw(mkpath);
 	use File::Temp qw(tempdir);
-	use Hash::Util qw(lock_keys);
+	use Hash::Util qw();
 	use YAML::Syck qw(LoadFile);
 
 	sub save_pwd (&) {
@@ -45,16 +45,35 @@
 				$CONFIG->{$key}->{builddir} = $CONFIG->{smokerdir} . '/src/' . $base;
 				$CONFIG->{$key}->{installdir} = $CONFIG->{smokerdir} . '/install/' . $base;
 				$CONFIG->{$key}->{configdir} = $CONFIG->{smokerdir} . '/config/' . $base;
+				$CONFIG->{$key}->{reportsdir} = $CONFIG->{smokerdir} . '/reports/' . $base;
 			}
 		} else {
 			for my $key (qw(perl1 perl2)) {
 				$CONFIG->{$key}->{builddir} = $CONFIG->{smokerdir} . '/src/' . $CONFIG->{$key}->{base_without_ext};
 				$CONFIG->{$key}->{installdir} = $CONFIG->{smokerdir} . '/install/' . $CONFIG->{$key}->{base_without_ext};
 				$CONFIG->{$key}->{configdir} = $CONFIG->{smokerdir} . '/config/' . $CONFIG->{$key}->{base_without_ext};
+				$CONFIG->{$key}->{reportsdir} = $CONFIG->{smokerdir} . '/reports/' . $CONFIG->{$key}->{base_without_ext};
 			}
 		}
 
-		lock_keys %$CONFIG;
+		for my $key (qw(perl1 perl2)) {
+			for my $def (['edit_report', 'default:no'],
+				     ['email_from',  $ENV{EMAIL}],
+				     ['send_report', 'default:yes'],
+				     ['transport',   "File " . $CONFIG->{$key}->{reportsdir}],
+				    ) {
+				my($cr_key, $cr_def_val) = @$def;
+				if (!exists $CONFIG->{cpanreporter}->{$cr_key}) {
+					$CONFIG->{$key}->{cpanreporter}->{$cr_key} = $cr_def_val;
+				} else {
+					$CONFIG->{$key}->{cpanreporter}->{$cr_key} = $CONFIG->{cpanreporter}->{$cr_key};
+				}
+			}
+		}
+
+		{ local $SIG{__WARN__} = sub {}; # lock_hashref_recurse is noisy
+		  Hash::Util::lock_hashref_recurse($CONFIG);
+		}
 	}
 
 	$CONFIG_FILE = "smoke.yaml" if !$CONFIG_FILE;
@@ -99,8 +118,8 @@
 			system "tar", "xf", $perl_spec->{downloadfile}; # XXX assumes modern tar
 			die "Problem while extracting $perl_spec->{downloadfile}" if $? != 0;
 			chdir ".." or die $!;
-			my $from = $tmpdir . '/' . basename($perl_spec->{builddir});
-			my $to   = dirname $perl_spec->{builddir};
+			my $from = $tmpdir . '/' . $perl_spec->{base_without_ext};
+			my $to   = $perl_spec->{builddir};
 			system "mv", $from, $to; # XXX should use File::Path::move or rename
 			$? == 0 or die "Cannot move $from to $to: $!";
 		};
@@ -161,7 +180,7 @@ install-perl:
 		(!$force && -e $CONFIG->{perl2}->{installdir}) or install_perl $CONFIG->{perl2};
 	}
 
-prepare-smoker:
+prepare-smoker-modules:
 	{
 		# XXX should handle devel perl versions (with perlver)
 		for my $key (qw(perl1 perl2)) {
@@ -169,3 +188,46 @@ prepare-smoker:
 			"-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter));
 		}
 	}
+
+prepare-smoker-config:
+	{
+		for my $key (qw(perl1 perl2)) {
+			ensure_dir $CONFIG->{$key}->{configdir};
+			ensure_dir $CONFIG->{$key}->{configdir} . "/cpanreporter";
+			ensure_dir $CONFIG->{$key}->{reportsdir};
+			save_pwd {
+			    chdir $CONFIG->{$key}->{reportsdir} or die $!;
+			    for my $dir (qw(done invalid process sync undecided)) {
+				if (!-d $dir) { mkdir $dir or die "Cannot create $dir: $!" }
+			    }
+			    if (!-e "new") {
+				symlink ".", "new" or die "Cannot symlink new: $!";
+			    }
+			};
+
+			my $config_ini = $CONFIG->{$key}->{configdir} . "/cpanreporter/config.ini";
+			open my $ofh, ">", $config_ini or die "Can't write to $config_ini: $!";
+			while(my($k,$v) = each %{ $CONFIG->{$key}->{cpanreporter} }) {
+				print $ofh "$k=$v\n";
+			}
+			close $ofh or die $!;
+		}
+	}
+
+create-modlist:
+	{
+		my $modlist = $CONFIG->{smokerdir} . '/config/modlist';
+		if ($CONFIG->{modlist}->{dependants}) {
+			my $cmd = "./utils/find_dependants.pl $CONFIG->{modlist}->{dependants} > $modlist";
+			system($cmd);
+			die "Command '$cmd' failed: $?" if $? != 0;
+		} else {
+			die "NYI";
+		}
+	}
+
+# start-smoking:
+# 	{
+# 		for my $key (qw(perl1 perl2)) {
+# 		}
+# 	}
