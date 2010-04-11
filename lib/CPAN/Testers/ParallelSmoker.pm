@@ -11,13 +11,21 @@
 # WWW:  http://www.rezic.de/eserte/
 #
 
-package CPAN::Testers::Parallel::Smoker;
+package CPAN::Testers::ParallelSmoker;
 
 use strict;
 
 =head1 NAME
 
 CPAN::Testers::ParallelSmoker
+
+=head1 SYNOPSIS
+
+XXX:
+  ctps-build-perls
+  ctps-setup-smoker
+  ctps-make-distlist
+  ...
 
 =head1 WORKFLOW
 
@@ -32,6 +40,9 @@ version, different configuration).
 XXX If it's the same perl version and configuration: safe some build
 time by creating a relocatable perl and just clone the first
 installation (available from perl 5.8.9 and 5.9.4)?
+
+XXX We can probably skip perl testing. Or maybe run the tests in
+background with very low priority while the smoker already runs.
 
 Existing tools: Perl's C<Configure> or C<configure.gnu>, my private
 C<~/FreeBSD/build/perl>.
@@ -57,7 +68,7 @@ Creation of configuration files is currently done manually.
 This step is only needed if testing two different module versions:
 install the old version in the first perl installation and the new
 version in the second perl installation. Make sure that updating this
-module is forbidden, i.e. by creating a dynamic prefs file.
+module is forbidden, i.e. by creating a dynamic distroprefs file.
 
 =item * Create list of CPAN distributions to test against
 
@@ -88,8 +99,7 @@ the EUMM or MB based distributions (for example by examing the
 contents of the distributions and looking for the existance of
 Build.PL).
 
-Existing tools: private "find files in CPAN distributions" script
-(where is it?).
+Existing tools: private C<cpandisthasfile.pl>.
 
 =item * For testing different versions of any modules find the modules
 depending on the modules to test.
@@ -110,10 +120,12 @@ for temporary files). On the other hand, the smokers should not be too
 far away, so e.g. temporary failures in internet connections affect
 both smokers.
 
+XXX install or not install (install mandatory for EUMM/MB tests)
+
 Existing tools: C<cpan_smoke_modules>, C<CPAN::Reporter>+C<CPAN> with
 a custom list, maybe also C<CPAN::Reporter::Smoker> (but I think it
 cannot handle a distribution list, but this could be faked with some
-kind of prefs file).
+kind of distroprefs file).
 
 =item * Comparison reports
 
@@ -122,9 +134,45 @@ They are available as plain text and as HTML file, with links to the
 single reports and to useful sites like RT, search.cpan.org,
 matrix.cpantesters.org.
 
-Existing tools: private C<cmp_ct_history.pl> (where is it?)
+Possible comparison types:
+
+=over 
+
+=item * PASS/FAIL comparisons
+
+Find regresssions.
+
+Existing tools: private C<cmp_ct_history.pl>
+
+=item * Equivalent installations
+
+Are installed files the same?
+
+Existing tools: some mtree mechanism with exclusion lists.
+
+=item * Benchmarking
+
+Parse wallclock/CPU time out of test reports and compare.
 
 =back
+
+=back
+
+=head1 CONFIGURATION and WORKFLOW KNOWLEDGE
+
+Configuration:
+
+ * root directories of both perls
+ * paths to both perl binaries (usually $perlroot/bin/perl$perlversion, with or without $perlversion)
+ * paths to both .cpanreporter directories (with CPAN::Reporter configuration)
+ * paths to both directories containing the created reports (with done/sync/... subdirectories)
+ * paths to both directories containing cpan distroprefs
+
+Workflow knowledge:
+
+ * completed step in the workflow
+ * steps to be done
+ * completed "sub-steps" (i.e. last successfully checked distribution)
 
 =head1 AUTHOR
 
