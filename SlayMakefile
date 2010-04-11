@@ -184,7 +184,7 @@ prepare-smoker-modules:
 	{
 		# XXX should handle devel perl versions (with perlver)
 		for my $key (qw(perl1 perl2)) {
-			system("utils/cpan_smoke_modules", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+			system("./utils/cpan_smoke_modules", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
 			"-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter));
 		}
 	}
@@ -193,7 +193,8 @@ prepare-smoker-config:
 	{
 		for my $key (qw(perl1 perl2)) {
 			ensure_dir $CONFIG->{$key}->{configdir};
-			ensure_dir $CONFIG->{$key}->{configdir} . "/cpanreporter";
+			my $cpanreporterdir = $CONFIG->{$key}->{configdir} . "/cpanreporter";
+			ensure_dir $cpanreporterdir;
 			ensure_dir $CONFIG->{$key}->{reportsdir};
 			save_pwd {
 			    chdir $CONFIG->{$key}->{reportsdir} or die $!;
@@ -205,12 +206,20 @@ prepare-smoker-config:
 			    }
 			};
 
-			my $config_ini = $CONFIG->{$key}->{configdir} . "/cpanreporter/config.ini";
-			open my $ofh, ">", $config_ini or die "Can't write to $config_ini: $!";
-			while(my($k,$v) = each %{ $CONFIG->{$key}->{cpanreporter} }) {
-				print $ofh "$k=$v\n";
+			{
+				my $config_ini = $CONFIG->{$key}->{configdir} . "/cpanreporter/config.ini";
+				open my $ofh, ">", $config_ini or die "Can't write to $config_ini: $!";
+				while(my($k,$v) = each %{ $CONFIG->{$key}->{cpanreporter} }) {
+					print $ofh "$k=$v\n";
+				}
+				close $ofh or die $!;
 			}
-			close $ofh or die $!;
+			{
+				my $ofile = $CONFIG->{$key}->{installdir} . "/.cpanreporterdir";
+				open my $ofh, ">", $ofile or die "Can't write to $ofile: $!";
+				print $ofh $cpanreporterdir, "\n";
+				close $ofh or die $!;
+			}
 		}
 	}
 
@@ -226,8 +235,21 @@ create-modlist:
 		}
 	}
 
-# start-smoking:
-# 	{
-# 		for my $key (qw(perl1 perl2)) {
-# 		}
-# 	}
+start-smoking:
+	{
+		my $modlist = $CONFIG->{smokerdir} . '/config/modlist';
+		if (!-e $modlist) {
+			die "$modlist was not yet created, please run create-modlist rule"; # XXX should be done automatically
+		}
+		for my $key (qw(perl1 perl2)) {
+			my $geom = $key eq 'perl1' ? '+0+0' : '-0+0';
+			my @cmd = ("xterm",
+				   "-geometry", $geom,
+				   "-T", "smoking $key",
+				   "-e", "./utils/cpan_smoke_modules", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist);
+			if (fork == 0) {
+				exec(@cmd);
+				die "@cmd failed: $!";
+			}
+		}
+	}
