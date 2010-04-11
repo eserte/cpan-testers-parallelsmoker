@@ -4,3 +4,4 @@ smoke:
     version: 5.10.1
   perl2:
     url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.12.0-RC5.tar.bz2
+  run_in: screen
