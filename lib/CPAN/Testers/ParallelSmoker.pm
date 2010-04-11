@@ -175,6 +175,10 @@ Workflow knowledge:
  * steps to be done
  * completed "sub-steps" (i.e. last successfully checked distribution)
 
+=head1 TODO
+
+ * optionally start Xnest or Xvfb for GUI testing (see multiperltest)
+
 =head1 AUTHOR
 
 Slaven ReziE<0x107>, E<lt>srezic@cpan.orgE<gt>
