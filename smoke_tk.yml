@@ -1,0 +1,17 @@
+smoke:
+  testlabel: testtk
+  perl1:
+    version: 5.10.1
+  perl2:
+    version: 5.10.1
+  mod1:
+    url: http://search.cpan.org/CPAN/authors/id/S/SR/SREZIC/Tk-804.028.tar.gz
+  mod2:
+    url: http://search.cpan.org/CPAN/authors/id/S/SR/SREZIC/Tk-804.028_502.tar.gz
+  modlist:
+    dependants: Tk
+#  cpanreporter:
+#    edit_report: "default:ask/no pass/na:no"
+#    email_from: srezic@cpan.org
+#    send_report: "default:ask/yes pass/na:yes"
+#    smtp_server: biokovo
