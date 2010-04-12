@@ -60,6 +60,8 @@ sub dependants {
 	push @todo, grep { not $seen{$_}++ } @deps;
     }
 
+    delete $seen{$dist->distribution};
+
     my @dist;
     for my $dist (keys %seen) {
 	push @dist, CPANDB->distribution($dist)->release;
