@@ -10,3 +10,5 @@ smoke:
     url: http://search.cpan.org/CPAN/authors/id/G/GA/GAAS/libwww-perl-5.808.tar.gz
   mod2:
     url: http://search.cpan.org/CPAN/authors/id/G/GA/GAAS/libwww-perl-5.834.tar.gz
+  modlist:
+    dependants: libwww-perl
