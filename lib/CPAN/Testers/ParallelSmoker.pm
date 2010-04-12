@@ -14,6 +14,7 @@
 package CPAN::Testers::ParallelSmoker;
 
 use strict;
+our $VERSION = '0.01';
 
 =head1 NAME
 
