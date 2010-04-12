@@ -161,7 +161,7 @@
 	}
 }
 
-all:
+all:	download-perl extract-perl build-perl install-perl prepare-smoker-modules prepare-smoker-config create-modlist install-mod start-smoking
 
 dump-config:
 	{
