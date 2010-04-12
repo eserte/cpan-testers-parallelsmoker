@@ -8,6 +8,7 @@ WriteMakefile
      VERSION_FROM => 'lib/CPAN/Testers/ParallelSmoker.pm',
      PREREQ_PM    =>
      {
+      'Slay::Makefile' => 0,
       # for cpan_smoke_modules
       'BSD::Resource' => 0,
       'CPAN::DistnameInfo' => 0,
