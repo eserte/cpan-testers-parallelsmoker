@@ -27,15 +27,27 @@
 
 		for my $key (qw(perl1 perl2)) {
 			if (!$CONFIG->{$key}->{url}) {
-				my $ver = $CONFIG->{$key}->{version} or die "Must specify either url or version for every perl";
-				my $url = "http://www.cpan.org/src/5.0/perl-$ver.tar.bz2";
-				$CONFIG->{$key}->{url} = $url;
+				if ($CONFIG->{$key}->{version}) {
+					my $ver = $CONFIG->{$key}->{version};
+					my $url = "http://www.cpan.org/src/5.0/perl-$ver.tar.bz2";
+					$CONFIG->{$key}->{url} = $url;
+				} elsif ($CONFIG->{$key}->{commit}) {
+					if (!$CONFIG->{$key}->{git_repository}) {
+						die "Must specify git_repository together with commit";
+					}
+				} else {
+					die "Must specify either url or version or commit for every perl";
+				}
 			}
-			my $base = basename $CONFIG->{$key}->{url};
-			$CONFIG->{$key}->{base} = $base;
-			$CONFIG->{$key}->{downloadfile} = $CONFIG->{downloaddir} . '/' . $base;
-			(my $base_without_ext = $base) =~ s{\.tar\.(bz2|gz)$}{};
-			$CONFIG->{$key}->{base_without_ext} = $base_without_ext;
+			if ($CONFIG->{$key}->{url}) {
+				my $base = basename $CONFIG->{$key}->{url};
+				$CONFIG->{$key}->{base} = $base;
+				$CONFIG->{$key}->{downloadfile} = $CONFIG->{downloaddir} . '/' . $base;
+				(my $base_without_ext = $base) =~ s{\.tar\.(bz2|gz)$}{};
+				$CONFIG->{$key}->{base_without_ext} = $base_without_ext;
+			} else {
+				$CONFIG->{$key}->{base_without_ext} = "perl-" . $CONFIG->{$key}->{commit};
+			}
 		}
 		if ($CONFIG->{perl1}->{base_without_ext} eq $CONFIG->{perl2}->{base_without_ext}) {
 			# same perl, so need to add a suffix
@@ -73,6 +85,9 @@
 
 		$CONFIG->{want_mod_comparison} = (exists $CONFIG->{mod1} && exists $CONFIG->{mod2});
 		$CONFIG->{run_in} ||= 'xterm';
+		for my $key (qw(perl1 perl2)) {
+			$CONFIG->{$key}->{extract_from_git} = $CONFIG->{$key}->{commit};
+		}
 
 		{ local $SIG{__WARN__} = sub {}; # lock_hashref_recurse is noisy
 		  Hash::Util::lock_hashref_recurse($CONFIG);
@@ -108,7 +123,36 @@
 
 	sub download_perl ($) {
 		my $perl_spec = $_[0];
-		download $perl_spec->{url};
+		if ($perl_spec->{extract_from_git}) {
+			# this is from git, no download
+		} else {
+			download $perl_spec->{url};
+		}
+	}
+
+	sub extract_perl_from_tar ($) {
+		my $perl_spec = $_[0];
+		my $tmpdir = tempdir(CLEANUP => 1, DIR => $CONFIG->{smokerdir});
+		chdir $tmpdir or die $!;
+		system "tar", "xf", $perl_spec->{downloadfile}; # XXX assumes modern tar
+		die "Problem while extracting $perl_spec->{downloadfile}" if $? != 0;
+		chdir ".." or die $!;
+		my $from = $tmpdir . '/' . $perl_spec->{base_without_ext};
+		my $to   = $perl_spec->{builddir};
+		system "mv", $from, $to; # XXX should use File::Path::move or rename
+		$? == 0 or die "Cannot move $from to $to: $!";
+	}
+
+	sub extract_perl_from_git ($) {
+		my $perl_spec = $_[0];
+		my $git_repository = $perl_spec->{git_repository} || die "Please set git_repository";
+		my @clone_cmd = ("git", "clone", "-n", $git_repository, $perl_spec->{builddir});
+		system @clone_cmd;
+		$? == 0 or die "The command <@clone_cmd> failed";
+		chdir $perl_spec->{builddir} or die $!;
+		my @checkout_cmd = ("git", "checkout", $perl_spec->{commit});
+		system @checkout_cmd;
+		$? == 0 or die "The command <@checkout_cmd> failed";
 	}
 
 	sub extract_perl ($) {
@@ -116,15 +160,11 @@
 		save_pwd {
 			ensure_dir dirname $perl_spec->{builddir};
 			chdir $CONFIG->{smokerdir} or die $!;
-			my $tmpdir = tempdir(CLEANUP => 1, DIR => $CONFIG->{smokerdir});
-			chdir $tmpdir or die $!;
-			system "tar", "xf", $perl_spec->{downloadfile}; # XXX assumes modern tar
-			die "Problem while extracting $perl_spec->{downloadfile}" if $? != 0;
-			chdir ".." or die $!;
-			my $from = $tmpdir . '/' . $perl_spec->{base_without_ext};
-			my $to   = $perl_spec->{builddir};
-			system "mv", $from, $to; # XXX should use File::Path::move or rename
-			$? == 0 or die "Cannot move $from to $to: $!";
+			if ($perl_spec->{extract_from_git}) {
+				extract_perl_from_git($perl_spec);
+			} else {
+				extract_perl_from_tar($perl_spec);
+			}
 		};
 	}
 

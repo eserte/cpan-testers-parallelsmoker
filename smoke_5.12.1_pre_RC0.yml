@@ -1,0 +1,9 @@
+smoke:
+  testlabel: 5121_pre_rc0
+  perl1:
+    commit: v5.12.0
+    git_repository: /home/e/eserte/work2/perl-ssh
+  perl2:
+    commit: 5b98cd54dff3b16344eab33ce6b09fb6fb1b89c2
+    git_repository: /home/e/eserte/work2/perl-ssh
+  run_in: screen
