@@ -32,8 +32,8 @@
 					my $url = "http://www.cpan.org/src/5.0/perl-$ver.tar.bz2";
 					$CONFIG->{$key}->{url} = $url;
 				} elsif ($CONFIG->{$key}->{commit}) {
-					if (!$CONFIG->{$key}->{git_repository}) {
-						die "Must specify git_repository together with commit";
+					if (!$CONFIG->{git_repository}) { # XXX consider to use perl's default repo
+						die "Must specify 'git_repository' in config when using 'commit'";
 					}
 				} else {
 					die "Must specify either url or version or commit for every perl";
@@ -145,7 +145,7 @@
 
 	sub extract_perl_from_git ($) {
 		my $perl_spec = $_[0];
-		my $git_repository = $perl_spec->{git_repository} || die "Please set git_repository";
+		my $git_repository = $CONFIG->{git_repository} || die "Please set 'git_repository' in config";
 		my @clone_cmd = ("git", "clone", "-n", $git_repository, $perl_spec->{builddir});
 		system @clone_cmd;
 		$? == 0 or die "The command <@clone_cmd> failed";
@@ -172,7 +172,7 @@
 		my $perl_spec = $_[0];
 		save_pwd {
 			chdir $perl_spec->{builddir} or die $!;
-			system("nice", "./configure.gnu", "--prefix=$perl_spec->{installdir}", "-Dusedevel"); # XXX relocatable
+			system("nice", "./configure.gnu", "--prefix=$perl_spec->{installdir}"); # XXX relocatable
 			$? == 0 or die "Configure failed";
 			system("nice", "make");
 			$? == 0 or die "Build failed";
@@ -285,8 +285,10 @@ create-modlist:
 			my $cmd = "./utils/find_dependants.pl $CONFIG->{modlist}->{dependants} > $modlist";
 			system($cmd);
 			die "Command '$cmd' failed: $?" if $? != 0;
-		} else {
-			die "NYI";
+		} elsif ($CONFIG->{modlist}->{file}) {
+			my @cmd = "cp", $CONFIG->{modlist}->{file}, $CONFIG->{smokerdir} . '/config/modlist';
+			system @cmd; # XXX should use File::Copy
+			die "Command '@cmd' failed" if $? != 0;
 		}
 	}
 
