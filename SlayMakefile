@@ -352,3 +352,15 @@ start-smoking:
 			}
 		}
 	}
+
+cmp-ct-history:
+	{
+		# XXX cmp_ct_history.pl should be in utils!
+		my @cmd = ("/home/e/eserte/work/srezic-misc/scripts/cmp_ct_history.pl",
+		           $CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db',
+		           $CONFIG->{perl1}->{configdir} . '/cpanreporter/reports-sent.db',
+		          );
+		0 == system(@cmd)
+			or die "@cmd failed: $?";
+		"";
+	}
