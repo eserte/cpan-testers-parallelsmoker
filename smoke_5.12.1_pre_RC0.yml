@@ -1,11 +1,12 @@
 smoke:
   testlabel: 5121_pre_rc0
 #  git_repository: /home/e/eserte/work2/perl-ssh
-  git_repository: git://perl5.git.perl.org/perl.git
+#  git_repository: git://perl5.git.perl.org/perl.git
+  git_repository: /home/cpansand/work/perl
   perl1:
     commit: v5.12.0
   perl2:
     commit: 36693587080e3b3d31f308de4d313511d8068955
-  run_in: screen
+#  run_in: screen
   modlist:
     file: /tmp/1y-safe
