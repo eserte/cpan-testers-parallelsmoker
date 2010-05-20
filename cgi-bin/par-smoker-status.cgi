@@ -26,10 +26,14 @@ my $smoke = param("smoke");
 if (!$smoke) {
     show_all_smokes();
 } else {
-    show_smoke($smoke);
+    if (param("notes")) {
+	show_smoke_notes($smoke);
+    } else {
+	show_smoke($smoke);
+    }
 }
 
-sub show_smoke {
+sub _find_smoke {
     my($smoke) = @_;
     require File::Glob;
     my $found;
@@ -42,11 +46,19 @@ sub show_smoke {
 	}
     }
     if (!$found) { die "Cannot find smoke with name $smoke" }
+    $found;
+}
 
+sub show_smoke {
+    my($smoke) = @_;
+    my $found = _find_smoke($smoke);
     my $testlabel = $found->{testlabel};
 
     my @diffs = `$utils_dir/cmp_ct_history.pl -missing $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
     my @wc = `wc -l $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+
+    my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
+
 
     print header;
     print start_html(-title => "Parallel Smoker ($testlabel)", -style => {-code => style()});
@@ -54,7 +66,27 @@ sub show_smoke {
     print "<pre>", join("", map { escapeHTML($_) } @diffs), "</pre>";
     print "<b>Checked distributions:</b><br>\n";
     print "<pre>", join("", map { escapeHTML($_) } @wc), "</pre>";
+    if (-r $smoke_html) {
+	my $qq = CGI->new();
+	$qq->param("smoke", $testlabel);
+	$qq->param("notes", 1);
+	print qq{<a href="@{[ $qq->self_url ]}">Smoke notes</a>}
+    }
     print end_html;
+}
+
+sub show_smoke_notes {
+    my($smoke) = @_;
+    my $found = _find_smoke($smoke);
+    my $testlabel = $found->{testlabel};
+
+    my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
+
+    print header;
+    open my $ifh, $smoke_html or die $!;
+    while(<$ifh>) {
+	print $_;
+    }
 }
 
 sub show_all_smokes {
