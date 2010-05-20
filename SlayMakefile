@@ -88,13 +88,15 @@
 		for my $key (qw(perl1 perl2)) {
 			$CONFIG->{$key}->{extract_from_git} = $CONFIG->{$key}->{commit};
 		}
+		$CONFIG->{modlist}->{dependants} ||= undef;
+		$CONFIG->{modlist}->{file} ||= undef;
 
 		{ local $SIG{__WARN__} = sub {}; # lock_hashref_recurse is noisy
 		  Hash::Util::lock_hashref_recurse($CONFIG);
 		}
 	}
 
-	$CONFIG_FILE = "smoke.yaml" if !$CONFIG_FILE;
+	$CONFIG_FILE = "smoke.yml" if !$CONFIG_FILE;
 	$CONFIG = (LoadFile $CONFIG_FILE)->{smoke};
 	expand_config;
 
@@ -134,6 +136,7 @@
 		my $perl_spec = $_[0];
 		my $tmpdir = tempdir(CLEANUP => 1, DIR => $CONFIG->{smokerdir});
 		chdir $tmpdir or die $!;
+		print STDERR "Extract $perl_spec->{downloadfile} ...\n";
 		system "tar", "xf", $perl_spec->{downloadfile}; # XXX assumes modern tar
 		die "Problem while extracting $perl_spec->{downloadfile}" if $? != 0;
 		chdir ".." or die $!;
@@ -146,6 +149,7 @@
 	sub extract_perl_from_git ($) {
 		my $perl_spec = $_[0];
 		my $git_repository = $CONFIG->{git_repository} || die "Please set 'git_repository' in config";
+		# git clone is verbose enough, no need for diagnostics
 		my @clone_cmd = ("git", "clone", "-n", $git_repository, $perl_spec->{builddir});
 		system @clone_cmd;
 		$? == 0 or die "The command <@clone_cmd> failed";
@@ -202,6 +206,14 @@
 }
 
 all:	download-perl extract-perl build-perl install-perl prepare-smoker-modules prepare-smoker-config create-modlist install-mod start-smoking
+
+help:
+	{
+		print "Please run\n";
+		print "\n";
+		print "    slaymake CONFIG_FILE=smoke....yml\n";
+		print "\n";
+	}
 
 dump-config:
 	{
@@ -286,7 +298,7 @@ create-modlist:
 			system($cmd);
 			die "Command '$cmd' failed: $?" if $? != 0;
 		} elsif ($CONFIG->{modlist}->{file}) {
-			my @cmd = "cp", $CONFIG->{modlist}->{file}, $CONFIG->{smokerdir} . '/config/modlist';
+			my @cmd = ("cp", $CONFIG->{modlist}->{file}, $CONFIG->{smokerdir} . '/config/modlist');
 			system @cmd; # XXX should use File::Copy
 			die "Command '@cmd' failed" if $? != 0;
 		}
@@ -318,7 +330,7 @@ start-smoking:
 			if ($CONFIG->{run_in} eq 'screen') {
 				# XXX or alternatively use "screen -list" and check for "(Attached)" string
 				die "You're probably not running in a screen (TERM is not 'screen')" if $ENV{TERM} ne 'screen';
-				die "You're probably not running in a screen (STY is missing)" if !$ENV{STY};
+				#XXX not true on freebsd: die "You're probably not running in a screen (STY is missing)" if !$ENV{STY};
 				# XXX maybe use -L for additional logging?
 				my @cmd = ("screen", "-t", "smoke $CONFIG->{testlabel} $key", @smoke_cmd);
 				if (fork == 0) {
