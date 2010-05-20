@@ -14,3 +14,4 @@ smoke:
 #   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.10.1/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.10.1
 #   perl5.10.1 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
 #   sort ~eserte/var/tested-cpan-i386-FreeBSD-5.10.1 | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|09)' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2y-safe
+# important: manually remove everything matching /Test-Simple- from file!
