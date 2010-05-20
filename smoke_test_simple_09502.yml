@@ -1,0 +1,16 @@
+smoke:
+  testlabel: testsimple0.9502
+  perl1:
+    version: 5.10.1
+  perl2:
+    version: 5.10.1
+  mod1:
+    url: http://search.cpan.org/CPAN/authors/id/M/MS/MSCHWERN/Test-Simple-0.94.tar.gz
+  mod2:
+    url: http://search.cpan.org/CPAN/authors/id/M/MS/MSCHWERN/Test-Simple-0.95_02.tar.gz
+  modlist:
+    file: /tmp/2y-safe
+# 1y-safe created with (use zsh):
+#   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.10.1/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.10.1
+#   perl5.10.1 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
+#   sort ~eserte/var/tested-cpan-i386-FreeBSD-5.10.1 | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|09)' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2y-safe
