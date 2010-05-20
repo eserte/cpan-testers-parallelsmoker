@@ -14,7 +14,7 @@
 
 use strict;
 use FindBin;
-use CGI qw(:standard);
+use CGI qw(:standard escapeHTML);
 use HTML::Table;
 use YAML::Syck qw(LoadFile);
 
@@ -49,11 +49,11 @@ sub show_smoke {
     my @wc = `wc -l $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
 
     print header;
-    print start_html(-style => {-code => style()});
+    print start_html(-title => "Parallel Smoker ($testlabel)", -style => {-code => style()});
     print "<b>Differences:</b><br>\n";
-    print "<pre>", @diffs, "</pre>";
+    print "<pre>", join("", map { escapeHTML($_) } @diffs), "</pre>";
     print "<b>Checked distributions:</b><br>\n";
-    print "<pre>", @wc, "</pre>";
+    print "<pre>", join("", map { escapeHTML($_) } @wc), "</pre>";
     print end_html;
 }
 
@@ -103,7 +103,7 @@ sub show_all_smokes {
 
     # HTML output
     print header;
-    print start_html(-style => {-code => my_style()});
+    print start_html(-title => 'Parallel Smoker', -style => {-code => my_style()});
     my $table = HTML::Table->new(-head    => [@possible_cols],
 				 -spacing => 0,
 				 -data    => \@matrix,
