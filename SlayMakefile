@@ -252,6 +252,7 @@ prepare-smoker-modules:
 		# XXX should handle devel perl versions (with perlver)
 		for my $key (qw(perl1 perl2)) {
 			cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+					    "-nosignalend",
 					    "-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter)]);
 		}
 	}
@@ -313,6 +314,7 @@ install-mod:
 				my $url = $CONFIG->{$modkey}->{url};
 				die "No url set in mod1/mod2" if !$url;
 				cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+						    "-nosignalend",
 						    "-install", $url]);
 			}
 		}
