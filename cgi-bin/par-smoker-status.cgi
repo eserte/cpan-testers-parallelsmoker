@@ -46,13 +46,14 @@ sub show_smoke {
     my $testlabel = $found->{testlabel};
 
     my @diffs = `$utils_dir/cmp_ct_history.pl -missing $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+    my @wc = `wc -l $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
 
     print header;
-    print start_html;
+    print start_html(-style => {-code => style()});
     print "<b>Differences:</b><br>\n";
-    print "<pre>";
-    print @diffs;
-    print "</pre>";
+    print "<pre>", @diffs, "</pre>";
+    print "<b>Checked distributions:</b><br>\n";
+    print "<pre>", @wc, "</pre>";
     print end_html;
 }
 
@@ -72,13 +73,16 @@ sub show_all_smokes {
 	push @smokes, $d->{smoke};
     }
 
+    my @possible_cols = ('testlabel', sort grep { $_ ne 'testlabel' } keys %possible_cols);
+
     my @matrix;
     for my $smoke (@smokes) {
 	my @row;
-	for my $key (sort keys %possible_cols) {
+	for my $key (@possible_cols) {
 	    my $val = $smoke->{$key};
 	    if (defined $val) {
 		if (ref $val) {
+		    no warnings 'once';
 		    local $Data::Dumper::Indent = 0;
 		    $val = Data::Dumper::Dumper($val);
 		    $val =~ s{^\$VAR\d+\s+=\s+}{};
@@ -99,8 +103,8 @@ sub show_all_smokes {
 
     # HTML output
     print header;
-    print start_html;
-    my $table = HTML::Table->new(-head    => [sort keys %possible_cols],
+    print start_html(-style => {-code => my_style()});
+    my $table = HTML::Table->new(-head    => [@possible_cols],
 				 -spacing => 0,
 				 -data    => \@matrix,
 				 -class   => 'reports',
@@ -110,4 +114,29 @@ sub show_all_smokes {
     print end_html;
 }
 
+sub my_style {
+    <<EOF;
+  table		  { border-collapse:collapse; }
+  th,td           { border:1px solid black; }
+  body		  { font-family:sans-serif; }
+
+  .bt th,td	  { border:none; height:2.2ex; }
+
+  .reports th	  { border:2px solid black; padding-left:3px; padding-right:3px; }
+  .reports td	  { border:1px solid black; padding-left:3px; padding-right:3px; }
+
+  .warn           { color:red; font-weight:bold; }
+  .sml            { font-size: x-small; }
+  .unimpt         { font-size: smaller; }
+EOF
+}
+
 __END__
+
+=pod
+
+Possible configuration in Apache:
+
+    ScriptAlias /parsmoker /home/e/eserte/src/perl/CPAN-Testers-ParallelSmoker/cgi-bin/par-smoker-status.cgi
+
+=cut
