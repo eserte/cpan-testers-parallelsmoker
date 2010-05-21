@@ -19,12 +19,15 @@ use File::Glob qw(bsd_glob);
 use HTML::Table;
 use YAML::Syck qw(LoadFile);
 
+use constant MIN_MIN => 0;
+use constant MAX_MIN => 4;
+
 my $smoke_cfg_dir = "$FindBin::RealBin/..";
 my $utils_dir = "$FindBin::RealBin/../utils";
 my $ctps_dir = "/home/cpansand/var/ctps"; # XXX !!! do not hardcode (but how to get this info?)
 
 my $smoke = param("smoke");
-my $min = param("min");
+my $min = param("min") || 0;
 if (!$smoke) {
     show_all_smokes();
 } else {
@@ -55,7 +58,7 @@ sub show_smoke {
     my $found = _find_smoke($smoke);
     my $testlabel = $found->{testlabel};
 
-    my $mins = $min >= 0 && $min <= 4 ? (" -min ") x $min : "";
+    my $mins = $min >= MIN_MIN && $min <= MAX_MIN ? (" -min ") x $min : "";
     my @hist_dbs = reverse bsd_glob("$ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db"); # reverse! new, then old!
     my @diffs = `$utils_dir/cmp_ct_history.pl $mins @hist_dbs`;
     if (!@diffs && !$min) {
@@ -79,13 +82,27 @@ sub show_smoke {
     print start_html(-title => "Parallel Smoker ($testlabel)", -style => {-code => style()});
     print "<b>Differences:</b> (new vs. old)<br>\n";
     print "<pre>", @diffs, "</pre>";
-    print "<b>Checked distributions:</b><br>\n";
+
+    print qq{<div style="font-size:smaller; margin-left:2cm;">};
+    if ($min > MIN_MIN) {
+	my $qq = CGI->new;
+	$qq->param("min", $min-1);
+	print qq{<a href="@{[ $qq->self_url ]}">maximize diffs</a> };
+    }
+    if ($min < MAX_MIN) {
+	my $qq = CGI->new;
+	$qq->param("min", $min+1);
+	print qq{<a href="@{[ $qq->self_url ]}">minimize diffs</a> };
+    }
+    print "</div><br>\n";
+
+    print "<b>Tested distributions:</b><br>\n";
     print "<pre>", join("", map { escapeHTML($_) } @wc), "</pre>";
     if (-r $smoke_html) {
 	my $qq = CGI->new();
 	$qq->param("smoke", $testlabel);
 	$qq->param("notes", 1);
-	print qq{<a href="@{[ $qq->self_url ]}">Smoke notes</a>}
+	print qq{<a href="@{[ $qq->self_url ]}"><b>Smoke notes</b></a>}
     }
     print end_html;
 }
