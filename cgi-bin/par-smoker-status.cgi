@@ -59,11 +59,19 @@ sub show_smoke {
 
     my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
 
+    for (@diffs) {
+	s{^(.*)-(\S+)(.*)}{
+	    my($name,$ver,$rest) = ($1, $2, $3);
+	    my $qq = CGI->new({});
+	    $qq->param("dist", $name.' '.$ver);
+	    qq{<a href="http://matrix.cpantesters.org/?} . $qq->query_string . qq{">$name-$ver</a>} . escapeHTML($rest);
+        }eg;
+    }
 
     print header;
     print start_html(-title => "Parallel Smoker ($testlabel)", -style => {-code => style()});
     print "<b>Differences:</b><br>\n";
-    print "<pre>", join("", map { escapeHTML($_) } @diffs), "</pre>";
+    print "<pre>", @diffs, "</pre>";
     print "<b>Checked distributions:</b><br>\n";
     print "<pre>", join("", map { escapeHTML($_) } @wc), "</pre>";
     if (-r $smoke_html) {
