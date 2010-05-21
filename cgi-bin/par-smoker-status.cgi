@@ -54,7 +54,11 @@ sub show_smoke {
     my $found = _find_smoke($smoke);
     my $testlabel = $found->{testlabel};
 
-    my @diffs = `$utils_dir/cmp_ct_history.pl -missing $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+    my @diffs = `$utils_dir/cmp_ct_history.pl $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+    if (!@diffs) {
+	# boring? then show at least the missing ones
+	@diffs = `$utils_dir/cmp_ct_history.pl -missing $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+    }
     my @wc = `wc -l $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
 
     my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
