@@ -77,7 +77,7 @@ sub show_smoke {
 
     print header;
     print start_html(-title => "Parallel Smoker ($testlabel)", -style => {-code => style()});
-    print "<b>Differences:</b><br>\n";
+    print "<b>Differences:</b> (new vs. old)<br>\n";
     print "<pre>", @diffs, "</pre>";
     print "<b>Checked distributions:</b><br>\n";
     print "<pre>", join("", map { escapeHTML($_) } @wc), "</pre>";
