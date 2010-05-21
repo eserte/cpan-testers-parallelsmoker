@@ -15,6 +15,7 @@
 use strict;
 use FindBin;
 use CGI qw(:standard escapeHTML);
+use File::Glob qw(bsd_glob);
 use HTML::Table;
 use YAML::Syck qw(LoadFile);
 
@@ -23,6 +24,7 @@ my $utils_dir = "$FindBin::RealBin/../utils";
 my $ctps_dir = "/home/cpansand/var/ctps"; # XXX !!! do not hardcode (but how to get this info?)
 
 my $smoke = param("smoke");
+my $min = param("min");
 if (!$smoke) {
     show_all_smokes();
 } else {
@@ -35,9 +37,8 @@ if (!$smoke) {
 
 sub _find_smoke {
     my($smoke) = @_;
-    require File::Glob;
     my $found;
-    for my $cfg (File::Glob::bsd_glob("$smoke_cfg_dir/smoke*.yml")) {
+    for my $cfg (bsd_glob("$smoke_cfg_dir/smoke*.yml")) {
 	my $d = eval { LoadFile($cfg) };
 	next if !$d || !$d->{smoke};
 	if ($d->{smoke}->{testlabel} eq $smoke) {
@@ -54,12 +55,14 @@ sub show_smoke {
     my $found = _find_smoke($smoke);
     my $testlabel = $found->{testlabel};
 
-    my @diffs = `$utils_dir/cmp_ct_history.pl $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
-    if (!@diffs) {
+    my $mins = $min >= 0 && $min <= 4 ? (" -min ") x $min : "";
+    my @hist_dbs = reverse bsd_glob("$ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db"); # reverse! new, then old!
+    my @diffs = `$utils_dir/cmp_ct_history.pl $mins @hist_dbs`;
+    if (!@diffs && !$min) {
 	# boring? then show at least the missing ones
-	@diffs = `$utils_dir/cmp_ct_history.pl -missing $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+	@diffs = `$utils_dir/cmp_ct_history.pl -missing @hist_dbs`;
     }
-    my @wc = `wc -l $ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db`;
+    my @wc = `wc -l @hist_dbs`;
 
     my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
 
