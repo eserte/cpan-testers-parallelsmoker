@@ -27,7 +27,8 @@ my $utils_dir = "$FindBin::RealBin/../utils";
 my $ctps_dir = "/home/cpansand/var/ctps"; # XXX !!! do not hardcode (but how to get this info?)
 
 my $smoke = param("smoke");
-my $min = param("min") || 0;
+my $min = param("min");
+$min = 4 if !defined $min || !length $min;
 if (!$smoke) {
     show_all_smokes();
 } else {
@@ -58,18 +59,25 @@ sub show_smoke {
     my $found = _find_smoke($smoke);
     my $testlabel = $found->{testlabel};
 
+    my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
+    my $smoke_org  = "$ctps_dir/$testlabel/smoke.txt";
+    if (!-r $smoke_org) {
+	undef $smoke_org;
+    }
+
     my $mins = $min >= MIN_MIN && $min <= MAX_MIN ? (" -min ") x $min : "";
     my @hist_dbs = reverse bsd_glob("$ctps_dir/$testlabel/config/perl-*/cpanreporter/reports-sent.db"); # reverse! new, then old!
-    my @diffs = `$utils_dir/cmp_ct_history.pl $mins @hist_dbs`;
+    my $org_opt = $smoke_org ? " -org $smoke_org" : "";
+    my @diffs = `$utils_dir/cmp_ct_history.pl $mins @hist_dbs $org_opt`;
     if (!@diffs && !$min) {
 	# boring? then show at least the missing ones
-	@diffs = `$utils_dir/cmp_ct_history.pl -missing @hist_dbs`;
+	@diffs = `$utils_dir/cmp_ct_history.pl -missing @hist_dbs $org_opt`;
     }
     my @wc = `wc -l @hist_dbs`;
 
-    my $smoke_html = "$ctps_dir/$testlabel/smoke.html";
 
     for (@diffs) {
+	#XXX s{(https?:\S+)}{<a href="$1">$1</a>}g;
 	s{^(.*)-(\S+)(.*)}{
 	    my($name,$ver,$rest) = ($1, $2, $3);
 	    my $qq = CGI->new({});
