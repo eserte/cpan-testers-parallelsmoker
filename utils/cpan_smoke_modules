@@ -636,7 +636,7 @@ EOF
 	    if ($bleeding_edge) {
 		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(ftp://pause.perl.org/pub/PAUSE/)]; };
 	    } else {
-		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(ftp://ftp.funet.fi/pub/CPAN/)]; };
+		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(http://cpan.cpantesters.org/ ftp://ftp.funet.fi/pub/CPAN/)]; };
 	    }
 	}
 	$cpan_shell_init .= q{$CPAN::FTP::connect_to_internet_ok=1; };
