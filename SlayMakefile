@@ -194,7 +194,7 @@
 
 	sub cpan_smoke_modules_cmd {
 		my($args) = @_;
-		("./utils/cpan_smoke_modules", "-batch", @$args);
+		($^X, "./utils/cpan_smoke_modules", "-batch", @$args);
 	}
 
 	sub cpan_smoke_modules {
@@ -295,7 +295,7 @@ create-modlist:
 	{
 		my $modlist = $CONFIG->{smokerdir} . '/config/modlist';
 		if ($CONFIG->{modlist}->{dependants}) {
-			my $cmd = "./utils/find_dependants.pl $CONFIG->{modlist}->{dependants} > $modlist";
+			my $cmd = "$^X ./utils/find_dependants.pl $CONFIG->{modlist}->{dependants} > $modlist";
 			system($cmd);
 			die "Command '$cmd' failed: $?" if $? != 0;
 		} elsif ($CONFIG->{modlist}->{file}) {
@@ -356,7 +356,8 @@ start-smoking:
 cmp-ct-history:
 	{
 		# XXX cmp_ct_history.pl should be in utils!
-		my @cmd = ("./utils/cmp_ct_history.pl",
+		my @cmd = ($^X,
+			   " ./utils/cmp_ct_history.pl",
 		           $CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db',
 		           $CONFIG->{perl1}->{configdir} . '/cpanreporter/reports-sent.db',
 		          );
