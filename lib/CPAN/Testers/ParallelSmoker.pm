@@ -176,6 +176,25 @@ Workflow knowledge:
  * steps to be done
  * completed "sub-steps" (i.e. last successfully checked distribution)
 
+=head1 HINTS
+
+Force some failing key modules to install, or use a working devel
+version instead. E.g. old Tk (devel version usually works) or Gtk2
+(has often just one failing test).
+
+Don't forget to clean /tmp and /var directories before starting the
+smoker.
+
+Generate a complete list of current CPAN distro with the pass/fail
+status in the smoker run:
+
+    cd .../var/ctps/<testlabel>
+    ~eserte/work/srezic-misc/scripts/cpan_allpackages -perl install/perl-5.10.1-1/bin/perl > tested-perl-5.10.1-1
+    # same with the other perl
+
+The complete smoke directory (including both perls, ~16000 installed
+distributions, configuration, and the test reports) takes about ...
+
 =head1 TODO
 
  * optionally start Xnest or Xvfb for GUI testing (see multiperltest)
