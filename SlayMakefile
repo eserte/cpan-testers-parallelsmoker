@@ -1,5 +1,5 @@
 {
-	use vars qw($CONFIG $CONFIG_FILE);
+	use vars qw($CONFIG $CONFIG_FILE $OPTIONS);
 	use File::Basename qw(basename dirname);
 	use File::Path qw(mkpath);
 	use File::Temp qw(tempdir);
@@ -24,6 +24,8 @@
 
 		$CONFIG->{smokerdir} = "$ENV{HOME}/var/ctps/$CONFIG->{testlabel}";
 		$CONFIG->{downloaddir} = "$ENV{HOME}/var/ctps/downloads";
+
+		$OPTIONS = $CONFIG->{options}; # separate, to not be subject of lock_hash
 
 		for my $key (qw(perl1 perl2)) {
 			if (!$CONFIG->{$key}->{url}) {
@@ -327,7 +329,12 @@ start-smoking:
 			die "$modlist was not yet created, please run create-modlist rule"; # XXX should be done automatically
 		}
 		for my $key (qw(perl1 perl2)) {
-			my @smoke_cmd = cpan_smoke_modules_cmd(["-skiptested", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist]);
+			my @smoke_cmd = cpan_smoke_modules_cmd
+				(
+					[(!exists $OPTIONS->{skiptested} || $OPTIONS->{skiptested} ? "-skiptested" : ()),
+					 "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist,
+					]
+				);
 		# XXXX support for other terminal emulators?
 			if ($CONFIG->{run_in} eq 'screen') {
 				# XXX or alternatively use "screen -list" and check for "(Attached)" string
