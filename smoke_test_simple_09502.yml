@@ -9,9 +9,13 @@ smoke:
   mod2:
     url: http://search.cpan.org/CPAN/authors/id/M/MS/MSCHWERN/Test-Simple-0.95_02.tar.gz
   modlist:
-    file: /tmp/2y-safe
+#    file: /tmp/4y-safe
+#    dependants: Log-Report
+#    dependants: HTML-Declare
+    dependants: Google-AJAX-Library
+  options:
+    skiptested: 0
 # 1y-safe created with (use zsh):
 #   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.10.1/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.10.1
 #   perl5.10.1 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
-#   sort ~eserte/var/tested-cpan-i386-FreeBSD-5.10.1 | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|09)' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2y-safe
-# important: manually remove everything matching /Test-Simple- from file!
+#   sort ~eserte/var/tested-cpan-i386-FreeBSD-5.10.1 | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|09)' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' | grep -v /Test-Simple-0 > /tmp/2y-safe
