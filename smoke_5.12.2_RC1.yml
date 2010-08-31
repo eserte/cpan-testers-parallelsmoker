@@ -1,0 +1,14 @@
+smoke:
+  testlabel: 5122_rc1
+  git_repository: /home/cpansand/work/perl
+  perl1:
+    version: 5.12.1
+  perl2:
+    url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.12.2-RC1.tar.gz
+#  run_in: screen
+  modlist:
+    file: /tmp/2y-safe
+# 2y-safe created with (use zsh):
+#   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.12.0/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.12.0
+#   perl5.12.0 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
+#   sort ~eserte/var/tested-cpan-i386-FreeBSD-5.12.0 | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|09)' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2y-safe
