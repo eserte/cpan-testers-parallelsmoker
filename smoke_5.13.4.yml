@@ -1,0 +1,17 @@
+smoke:
+  testlabel: 5134
+  git_repository: /home/cpansand/work/perl
+  perl1:
+    url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.12.2-RC1.tar.gz
+  perl2:
+    url: http://search.cpan.org/CPAN/authors/id/F/FL/FLORA/perl-5.13.4.tar.bz2
+#  run_in: screen
+
+  modlist:
+# First run:
+    file: /tmp/2005-2010.mod
+# file created with (use zsh):
+#   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.12.0/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.12.0
+#   perl5.12.0 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
+#   sort ~eserte/var/tested-cpan-i386-FreeBSD-5.12.0 | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|0[56789])' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2005-2010
+#   perl5.12.0 -MParse::CPAN::Packages::Fast -nle 'BEGIN{$p=Parse::CPAN::Packages::Fast->new} $d = $_; $d =~ m{^(.)(.)}; $d = "$1/$1$2/$d"; if ($do = eval { $p->distribution($d) }) { $firstp = ($do->contains)[0]->package; if (!$seen{$firstp}++) { print $firstp } }' /tmp/2005-2010 > /tmp/2005-2010.mod
