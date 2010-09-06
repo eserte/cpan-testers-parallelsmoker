@@ -178,7 +178,7 @@
 		my $perl_spec = $_[0];
 		save_pwd {
 			chdir $perl_spec->{builddir} or die $!;
-			system("nice", "./configure.gnu", "--prefix=$perl_spec->{installdir}"); # XXX relocatable
+			system("nice", "./configure.gnu", '-Dusedevel', "--prefix=$perl_spec->{installdir}"); # XXX relocatable
 			$? == 0 or die "Configure failed";
 			system("nice", "make");
 			$? == 0 or die "Build failed";
