@@ -2,7 +2,7 @@ smoke:
   testlabel: 5134
   git_repository: /home/cpansand/work/perl
   perl1:
-    url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.12.2-RC1.tar.gz
+    url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.12.2.tar.gz
   perl2:
     url: http://search.cpan.org/CPAN/authors/id/F/FL/FLORA/perl-5.13.4.tar.bz2
 #  run_in: screen
