@@ -98,7 +98,8 @@
 		}
 	}
 
-	$CONFIG_FILE = "smoke.yml" if !$CONFIG_FILE;
+	#$CONFIG_FILE = "smoke.yml" if !$CONFIG_FILE;
+	die "Please specify 'slaymake CONFIG_FILE=....yml'" if !$CONFIG_FILE;
 	$CONFIG = (LoadFile $CONFIG_FILE)->{smoke};
 	expand_config;
 
