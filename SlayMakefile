@@ -333,7 +333,7 @@ start-smoking:
 			my @smoke_cmd = cpan_smoke_modules_cmd
 				(
 					[(!exists $OPTIONS->{skiptested} || $OPTIONS->{skiptested} ? "-skiptested" : ()),
-					 "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist,
+					 "-wait", "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", "-fl", $modlist,
 					]
 				);
 		# XXXX support for other terminal emulators?
