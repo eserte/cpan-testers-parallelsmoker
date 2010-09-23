@@ -13,17 +13,45 @@
 #
 
 use strict;
+use FindBin;
+use lib "$FindBin::RealBin/../lib";
+
 use File::Basename qw(basename);
 use File::Compare qw(compare);
+use File::Glob qw(bsd_glob);
 use File::Temp qw(tempfile);
 use Getopt::Long;
 
-my $diffprog = "diff";
-GetOptions("diff=s" => \$diffprog)
-    or die "usage?";
+use CPAN::Testers::ParallelSmoker;
 
-my $report_file_or_dir1 = shift or die;
-my $report_file_or_dir2 = shift or die;
+my $diffprog = "diff";
+my $config_file;
+GetOptions("diff=s" => \$diffprog,
+	   "config=s" => \$config_file,
+	  )
+    or die "usage: $0 [-diff] [-config configyml distname | leftdistfile rightdistfile]";
+
+my $report_file_or_dir1;
+my $report_file_or_dir2;
+
+if ($config_file) {
+    my $distname = shift or die "distname?";
+
+    require YAML::Syck;
+    $CONFIG = (YAML::Syck::LoadFile($config_file))->{smoke};
+    expand_config;
+    my $reports_dir1 = $CONFIG->{perl1}->{reportsdir};
+    my $reports_dir2 = $CONFIG->{perl2}->{reportsdir};
+    my($file1) = bsd_glob("$reports_dir1/{new,done}/{fail,pass,unknown,na}.$distname-{v,}[0-9]*");
+    my($file2) = bsd_glob("$reports_dir2/{new,done}/{fail,pass,unknown,na}.$distname-{v,}[0-9]*");
+    die "Cannot find $distname in $reports_dir1" if !$file1;
+    die "Cannot find $distname in $reports_dir2" if !$file2;
+    $report_file_or_dir1 = $file1;
+    $report_file_or_dir2 = $file2;
+} else {
+    $report_file_or_dir1 = shift or die "Please specify left report file or directory containing reports";
+    $report_file_or_dir2 = shift or die "Please specify right report file or directory containing reports";
+}
 
 if (-d $report_file_or_dir1) {
     my %reports1 = find_reports($report_file_or_dir1);
