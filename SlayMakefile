@@ -3,8 +3,11 @@
 	use File::Basename qw(basename dirname);
 	use File::Path qw(mkpath);
 	use File::Temp qw(tempdir);
-	use Hash::Util qw();
 	use YAML::Syck qw(LoadFile);
+
+	use Cwd qw(cwd);
+	use lib cwd . "/lib"; # XXX suboptimal, does not work if cwd is somewhere else
+	use CPAN::Testers::ParallelSmoker;
 
 	sub save_pwd (&) {
 		my $code = shift;
@@ -16,86 +19,6 @@
 		my $err = $@;
 		chdir $pwd or die "Can't chdir back to $pwd: $!";
 		die $err if $err;
-	}
-
-	sub expand_config {
-		die "testlabel is missing" if !$CONFIG->{testlabel};
-		$CONFIG->{testlabel} =~ m{^[a-zA-Z0-9_.-]+$} or die "Illegal letters found in testlabel, try alphanumerics and . - _";
-
-		$CONFIG->{smokerdir} = "$ENV{HOME}/var/ctps/$CONFIG->{testlabel}";
-		$CONFIG->{downloaddir} = "$ENV{HOME}/var/ctps/downloads";
-
-		$OPTIONS = $CONFIG->{options}; # separate, to not be subject of lock_hash
-
-		for my $key (qw(perl1 perl2)) {
-			if (!$CONFIG->{$key}->{url}) {
-				if ($CONFIG->{$key}->{version}) {
-					my $ver = $CONFIG->{$key}->{version};
-					my $url = "http://www.cpan.org/src/5.0/perl-$ver.tar.bz2";
-					$CONFIG->{$key}->{url} = $url;
-				} elsif ($CONFIG->{$key}->{commit}) {
-					if (!$CONFIG->{git_repository}) { # XXX consider to use perl's default repo
-						die "Must specify 'git_repository' in config when using 'commit'";
-					}
-				} else {
-					die "Must specify either url or version or commit for every perl";
-				}
-			}
-			if ($CONFIG->{$key}->{url}) {
-				my $base = basename $CONFIG->{$key}->{url};
-				$CONFIG->{$key}->{base} = $base;
-				$CONFIG->{$key}->{downloadfile} = $CONFIG->{downloaddir} . '/' . $base;
-				(my $base_without_ext = $base) =~ s{\.tar\.(bz2|gz)$}{};
-				$CONFIG->{$key}->{base_without_ext} = $base_without_ext;
-			} else {
-				$CONFIG->{$key}->{base_without_ext} = "perl-" . $CONFIG->{$key}->{commit};
-			}
-		}
-		if ($CONFIG->{perl1}->{base_without_ext} eq $CONFIG->{perl2}->{base_without_ext}) {
-			# same perl, so need to add a suffix
-			for my $def (['perl1', '1'], ['perl2', '2']) {
-				my($key, $suffix) = @$def;
-				my $base = $CONFIG->{$key}->{base_without_ext} . "-" . $suffix;
-				$CONFIG->{$key}->{builddir} = $CONFIG->{smokerdir} . '/src/' . $base;
-				$CONFIG->{$key}->{installdir} = $CONFIG->{smokerdir} . '/install/' . $base;
-				$CONFIG->{$key}->{configdir} = $CONFIG->{smokerdir} . '/config/' . $base;
-				$CONFIG->{$key}->{reportsdir} = $CONFIG->{smokerdir} . '/reports/' . $base;
-			}
-		} else {
-			for my $key (qw(perl1 perl2)) {
-				$CONFIG->{$key}->{builddir} = $CONFIG->{smokerdir} . '/src/' . $CONFIG->{$key}->{base_without_ext};
-				$CONFIG->{$key}->{installdir} = $CONFIG->{smokerdir} . '/install/' . $CONFIG->{$key}->{base_without_ext};
-				$CONFIG->{$key}->{configdir} = $CONFIG->{smokerdir} . '/config/' . $CONFIG->{$key}->{base_without_ext};
-				$CONFIG->{$key}->{reportsdir} = $CONFIG->{smokerdir} . '/reports/' . $CONFIG->{$key}->{base_without_ext};
-			}
-		}
-
-		for my $key (qw(perl1 perl2)) {
-			for my $def (['edit_report', 'default:no'],
-				     ['email_from',  $ENV{EMAIL}],
-				     ['send_report', 'default:yes'],
-				     ['transport',   "File " . $CONFIG->{$key}->{reportsdir}],
-				    ) {
-				my($cr_key, $cr_def_val) = @$def;
-				if (!exists $CONFIG->{cpanreporter}->{$cr_key}) {
-					$CONFIG->{$key}->{cpanreporter}->{$cr_key} = $cr_def_val;
-				} else {
-					$CONFIG->{$key}->{cpanreporter}->{$cr_key} = $CONFIG->{cpanreporter}->{$cr_key};
-				}
-			}
-		}
-
-		$CONFIG->{want_mod_comparison} = (exists $CONFIG->{mod1} && exists $CONFIG->{mod2});
-		$CONFIG->{run_in} ||= 'xterm';
-		for my $key (qw(perl1 perl2)) {
-			$CONFIG->{$key}->{extract_from_git} = $CONFIG->{$key}->{commit};
-		}
-		$CONFIG->{modlist}->{dependants} ||= undef;
-		$CONFIG->{modlist}->{file} ||= undef;
-
-		{ local $SIG{__WARN__} = sub {}; # lock_hashref_recurse is noisy
-		  Hash::Util::lock_hashref_recurse($CONFIG);
-		}
 	}
 
 	#$CONFIG_FILE = "smoke.yml" if !$CONFIG_FILE;
