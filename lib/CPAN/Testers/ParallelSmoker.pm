@@ -20,12 +20,19 @@ use Exporter 'import';
 
 our($CONFIG, $OPTIONS);
 
-our @EXPORT = qw(expand_config $CONFIG $OPTIONS);
+our @EXPORT = qw(load_config expand_config $CONFIG $OPTIONS);
 
 use File::Basename qw(basename);
 use Hash::Util qw();
+use YAML::Syck qw(LoadFile);
 
-sub expand_config {
+sub load_config ($) {
+    my $config_file = shift;
+    $CONFIG = (LoadFile $config_file)->{smoke};
+}
+
+sub expand_config () {
+    die "Config not available, maybe you have to call load_config first?" if !$CONFIG;
     die "testlabel is missing" if !$CONFIG->{testlabel};
     $CONFIG->{testlabel} =~ m{^[a-zA-Z0-9_.-]+$} or die "Illegal letters found in testlabel, try alphanumerics and . - _";
 
