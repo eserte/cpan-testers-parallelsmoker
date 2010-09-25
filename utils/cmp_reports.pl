@@ -42,8 +42,9 @@ if ($config_file) {
     expand_config;
     my $reports_dir1 = $CONFIG->{perl1}->{reportsdir};
     my $reports_dir2 = $CONFIG->{perl2}->{reportsdir};
-    my($file1) = bsd_glob("$reports_dir1/{new,done}/{fail,pass,unknown,na}.$distname-{v,}[0-9]*");
-    my($file2) = bsd_glob("$reports_dir2/{new,done}/{fail,pass,unknown,na}.$distname-{v,}[0-9]*");
+    (my $reportbasename = $distname) =~ s{_}{}g;
+    my($file1) = bsd_glob("$reports_dir1/{new,done}/{fail,pass,unknown,na}.$reportbasename-{v,}[0-9]*");
+    my($file2) = bsd_glob("$reports_dir2/{new,done}/{fail,pass,unknown,na}.$reportbasename-{v,}[0-9]*");
     die "Cannot find $distname in $reports_dir1" if !$file1;
     die "Cannot find $distname in $reports_dir2" if !$file2;
     $report_file_or_dir1 = $file1;
