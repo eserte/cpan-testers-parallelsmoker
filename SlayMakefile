@@ -139,6 +139,39 @@ help:
 		print "\n";
 	}
 
+tools-both:
+	{
+		print "*** Compare reports:\n";
+		print "    ./utils/cmp_ct_history.pl $CONFIG->{perl2}->{configdir}/cpanreporter/reports-sent.db $CONFIG->{perl1}->{configdir}/cpanreporter/reports-sent.db -min -min -min -fulldist\n";
+	}
+
+tools-new:
+	{
+		print "*** Mark FAIL reports as good:\n";
+		print "    /home/e/eserte/devel/ctr_good_or_invalid.pl -geometry 600x900+0+0 -quit-at-end $CONFIG->{perl2}->{reportsdir} &\n";
+	## XXX Collecting some auto-move rules...
+	#mv -v `fgrep -l " Failed test 'Pod coverage on " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "defined(%hash) is deprecated at" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "defined(@array) is deprecated at" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Do you need to predeclare Carp::croak?" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Do you need to predeclare croak?" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "UNIVERSAL->import is deprecated and will be removed in a future perl at" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Not in MANIFEST: MYMETA.yml" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Error:  Can't locate " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `grep -l "Can't locate .* in @INC " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `grep -l 'Error:  Base class package ".*" is empty.' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Failed test 'Test::Perl::Critic for " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l '# Operation "eq": no method found,' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l '^* matches null string many times in regex; marked by' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l 'DBD::SQLite::db prepare failed: database is locked at ' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "This Perl not built to support threads" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Failed test 'POD test for " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l "Failed test 'POD spelling for " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l '/usr/lib/libpthread.so.2: Undefined symbol "__malloc_lock" at ' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l 'There is no form named "' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/    
+	#mv -v `fgrep -l 'Error GETing http://' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/    
+	}
+
 dump-config:
 	{
 		require Data::Dumper;
