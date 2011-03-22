@@ -8,8 +8,12 @@ smoke:
 #  run_in: screen
 
   modlist:
-# First run:
-    file: /tmp/2005-2010.mod
+## First run:
+#    file: /tmp/2005-2010.mod
+# 2nd run:
+    file: /tmp/2005-2010-11per.mod
+# 3rd run:
+    file: /tmp/2005-2010-97per.mod
 # file created with (use zsh):
 #   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.12.0/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.12.0
 #   perl5.12.0 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
