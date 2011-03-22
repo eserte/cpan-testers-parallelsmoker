@@ -1,0 +1,12 @@
+smoke:
+  testlabel: mb03617
+  perl1:
+    version: 5.12.2
+  perl2:
+    version: 5.12.2
+  mod1:
+    url: http://search.cpan.org/CPAN/authors/id/D/DA/DAGOLDEN/Module-Build-0.3607.tar.gz
+  mod2:
+    url: http://search.cpan.org/CPAN/authors/id/D/DA/DAGOLDEN/Module-Build-0.36_17.tar.gz
+  modlist:
+    dependants: Module-Build
