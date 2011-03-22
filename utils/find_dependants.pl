@@ -43,11 +43,12 @@ sub dependants {
 
     # Fill the graph via simple list recursion
     my @todo = ( $dist->distribution );
-    my %seen = ( $dist->distribution => 1 );
-    while ( @todo ) {
+##    my %seen = ( $dist->distribution => 1 );
+##    while ( @todo ) {
 	my $name = shift @todo;
 	next if $name =~ /^Task-/; # XXX why?
 	next if $name =~ /^Acme-Mom/;
+	next if $name =~ /^Bundle-Everything/;
 
 	# Find the distinct dependencies for this node
 	my @deps = map {
@@ -55,15 +56,17 @@ sub dependants {
 	} CPANDB::Dependency->select(
 				     $sql_where, $name, @sql_param,
 				    );
-	
-	# Push the new ones to the list
-	push @todo, grep { not $seen{$_}++ } @deps;
-    }
 
-    delete $seen{$dist->distribution};
+#### XXX Why was this done at all? We only need the first level; everything else is done by CPAN.pm!
+##	# Push the new ones to the list
+##	push @todo, grep { not $seen{$_}++ } @deps;
+##    }
+
+##    delete $seen{$dist->distribution};
 
     my @dist;
-    for my $dist (keys %seen) {
+##    for my $dist (keys %seen) {
+    for my $dist (@deps) {
 	push @dist, CPANDB->distribution($dist)->release;
     }
     @dist;
