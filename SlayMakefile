@@ -149,6 +149,8 @@ tools-new:
 	{
 		print "*** Mark FAIL reports as good:\n";
 		print "    /home/e/eserte/devel/ctr_good_or_invalid.pl -geometry 600x900+0+0 -quit-at-end $CONFIG->{perl2}->{reportsdir} &\n";
+		print "*** Check and send good reports forever:\n";
+		print qq{    forever -60 'echo "**** WORKING ****"; sleep 1; ctr_good_or_invalid.pl -good $CONFIG->{perl2}->{reportsdir}/ ; perl5.12.0 -S send_tr_reports.pl $CONFIG->{perl2}->{reportsdir}/ ; echo "**** FINISHED ****"'\n};
 	## XXX Collecting some auto-move rules...
 	#mv -v `fgrep -l " Failed test 'Pod coverage on " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
 	#mv -v `fgrep -l "defined(%hash) is deprecated at" /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
@@ -168,8 +170,8 @@ tools-new:
 	#mv -v `fgrep -l "Failed test 'POD test for " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
 	#mv -v `fgrep -l "Failed test 'POD spelling for " /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
 	#mv -v `fgrep -l '/usr/lib/libpthread.so.2: Undefined symbol "__malloc_lock" at ' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
-	#mv -v `fgrep -l 'There is no form named "' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/    
-	#mv -v `fgrep -l 'Error GETing http://' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/    
+	#mv -v `fgrep -l 'There is no form named "' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
+	#mv -v `fgrep -l 'Error GETing http://' /home/cpansand/var/ctps/5136/reports/perl-5.13.6/fail.*` /home/cpansand/var/ctps/5136/reports/perl-5.13.6/sync/
 	}
 
 dump-config:
