@@ -37,11 +37,13 @@ my $show_missing;
 my $show_fulldist;
 my $show_minimal;
 my $org_file;
+my $use_default_org_file;
 my $smoke_config_file;
 GetOptions("missing!"     => \$show_missing,
 	   "fulldist!"    => \$show_fulldist,
 	   "minimal|min+" => \$show_minimal,
 	   "org=s"        => \$org_file,
+	   "defaultorg!"  => \$use_default_org_file,
 	   "config=s"     => \$smoke_config_file,
 	  )
     or die "usage: $0 [-missing] [-fulldist] [-minimal [-minimal]] -config file | newhistory oldhistory";
@@ -56,6 +58,9 @@ if ($smoke_config_file) {
     $hist1 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db';
     -r $hist2 or die "Right history file $hist2 not readable";
     -r $hist1 or die "Left history file $hist2 not readable";
+    if ($use_default_org_file) {
+	$org_file = $CPAN::Testers::ParallelSmoker::CONFIG->{smokerdir} . '/smoke.txt';
+    }
 } else {
     $hist1 = shift or die "left history (usually the history with the *newer* system)?";
     $hist2 = shift or die "right history (usually the history with the *older* system)?";
