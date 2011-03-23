@@ -118,7 +118,7 @@
 
 	sub cpan_smoke_modules_cmd {
 		my($args) = @_;
-		($^X, "./utils/cpan_smoke_modules", "-batch", @$args);
+		($^X, "./utils/cpan_smoke_modules", "-batch", "-forparallelsmoker", @$args);
 	}
 
 	sub cpan_smoke_modules {
