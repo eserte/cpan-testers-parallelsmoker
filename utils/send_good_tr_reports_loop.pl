@@ -7,8 +7,6 @@ use lib "$FindBin::RealBin/../lib";
 use Getopt::Long;
 use CPAN::Testers::ParallelSmoker;
 
-die "DOES NOT WORK, because of the $ENV{HOME} confusion. smoker normally runs under cpansand, this script normally under normal user";
-
 my $once;
 my $doit = 1;
 GetOptions("once" => \$once,
@@ -19,6 +17,8 @@ GetOptions("once" => \$once,
 my $smoke_config = shift
     or die "Please specify smoke config file";
 load_config $smoke_config;
+my $home = (getpwnam("cpansand"))[7]; # XXX hardcoding cpansand user here
+set_home $home;
 expand_config;
 
 my($ctr_good_or_invalid_script) =
@@ -49,7 +49,8 @@ while() {
 	    unshift @cmd, "echo" if !$doit;
 	    warn "  @cmd ...\n";
 	    system @cmd;
-	    die "@cmd: $?" if $? != 0;
+	    ## No: a non-zero exit is normal!
+	    #die "@cmd: $?" if $? != 0;
 	}
 	{
 	    my @cmd = ($^X, $send_tr_reports_script,
