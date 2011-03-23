@@ -9,8 +9,10 @@ use CPAN::Testers::ParallelSmoker;
 
 my $once;
 my $doit = 1;
+my $v;
 GetOptions("once" => \$once,
 	   "n" => sub { $doit = 0 },
+	   "v" => \$v,
 	  )
     or die "usage?";
 
@@ -47,7 +49,7 @@ while() {
 	    my @cmd = ($^X, $ctr_good_or_invalid_script, "-good", 
 		       $CONFIG->{$key}->{reportsdir});
 	    unshift @cmd, "echo" if !$doit;
-	    warn "  @cmd ...\n";
+	    warn "  @cmd ...\n" if $v;
 	    system @cmd;
 	    ## No: a non-zero exit is normal!
 	    #die "@cmd: $?" if $? != 0;
@@ -56,7 +58,7 @@ while() {
 	    my @cmd = ($^X, $send_tr_reports_script,
 		       $CONFIG->{$key}->{reportsdir});
 	    unshift @cmd, "echo" if !$doit;
-	    warn "  @cmd ...\n";
+	    warn "  @cmd ...\n" if $v;
 	    system @cmd;
 	    die "@cmd: $?" if $? != 0;
 	}
