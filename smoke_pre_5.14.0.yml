@@ -26,5 +26,5 @@ smoke:
 #
 #   /usr/perl5.12.3/bin/perl ~/work2/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.12.3/bin/perl >| ~/var/tested-cpan-i386-linux-5.12.3
 #   /usr/perl5.12.3/bin/perl ~/devel-biokovo/find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
-#   sort ~eserte/var/tested-cpan-i386-linux-5.12.3  | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|0[56789])' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2005-2010.2
+#   sort ~/var/tested-cpan-i386-linux-5.12.3  | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|0[56789])' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2005-2010.2
 #   /usr/perl5.12.3/bin/perl -MParse::CPAN::Packages::Fast -nle 'BEGIN{$p=Parse::CPAN::Packages::Fast->new} $d = $_; $d =~ m{^(.)(.)}; $d = "$1/$1$2/$d"; if ($do = eval { $p->distribution($d) }) { $firstp = ($do->contains)[0]->package; if (!$seen{$firstp}++) { print $firstp } }' /tmp/2005-2010.2 > /tmp/2005-2010.mod.2
