@@ -18,9 +18,9 @@ our $VERSION = '0.01';
 
 use Exporter 'import';
 
-our($CONFIG, $OPTIONS);
+our($CONFIG, $OPTIONS, $HOME);
 
-our @EXPORT = qw(load_config expand_config $CONFIG $OPTIONS);
+our @EXPORT = qw(load_config expand_config set_home $CONFIG $OPTIONS);
 
 use File::Basename qw(basename);
 use Hash::Util qw();
@@ -31,13 +31,18 @@ sub load_config ($) {
     $CONFIG = (LoadFile $config_file)->{smoke};
 }
 
+sub set_home ($) {
+    $HOME = shift;
+}
+
 sub expand_config () {
+    set_home $ENV{HOME} if !defined $HOME;
     die "Config not available, maybe you have to call load_config first?" if !$CONFIG;
     die "testlabel is missing" if !$CONFIG->{testlabel};
     $CONFIG->{testlabel} =~ m{^[a-zA-Z0-9_.-]+$} or die "Illegal letters found in testlabel, try alphanumerics and . - _";
 
-    $CONFIG->{smokerdir} = "$ENV{HOME}/var/ctps/$CONFIG->{testlabel}";
-    $CONFIG->{downloaddir} = "$ENV{HOME}/var/ctps/downloads";
+    $CONFIG->{smokerdir} = "$HOME/var/ctps/$CONFIG->{testlabel}";
+    $CONFIG->{downloaddir} = "$HOME/var/ctps/downloads";
 
     $OPTIONS = $CONFIG->{options}; # separate, to not be subject of lock_hash
 
