@@ -17,6 +17,9 @@
 # smokes)
 
 use strict;
+use FindBin;
+use lib "$FindBin::RealBin/../lib";
+
 use CPAN;
 use Getopt::Long;
 use List::MoreUtils qw(uniq);
@@ -34,15 +37,29 @@ my $show_missing;
 my $show_fulldist;
 my $show_minimal;
 my $org_file;
+my $smoke_config_file;
 GetOptions("missing!"     => \$show_missing,
 	   "fulldist!"    => \$show_fulldist,
 	   "minimal|min+" => \$show_minimal,
 	   "org=s"        => \$org_file,
+	   "config=s"     => \$smoke_config_file,
 	  )
-    or die "usage: $0 [-missing] [-fulldist] [-minimal [-minimal]] newhistory oldhistory";
+    or die "usage: $0 [-missing] [-fulldist] [-minimal [-minimal]] -config file | newhistory oldhistory";
 
-my $hist1 = shift or die "left history (usually the history with the *newer* system)?";
-my $hist2 = shift or die "right history (usually the history with the *older* system)?";
+my($hist1, $hist2);
+if ($smoke_config_file) {
+    require CPAN::Testers::ParallelSmoker;
+    CPAN::Testers::ParallelSmoker::load_config($smoke_config_file);
+    CPAN::Testers::ParallelSmoker::set_home((getpwnam("cpansand"))[7]);
+    CPAN::Testers::ParallelSmoker::expand_config();
+    $hist2 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl1}->{configdir} . '/cpanreporter/reports-sent.db';
+    $hist1 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db';
+    -r $hist2 or die "Right history file $hist2 not readable";
+    -r $hist1 or die "Left history file $hist2 not readable";
+} else {
+    $hist1 = shift or die "left history (usually the history with the *newer* system)?";
+    $hist2 = shift or die "right history (usually the history with the *older* system)?";
+}
 
 my $dist2rt;
 my $dist2fixed;
