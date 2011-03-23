@@ -4,7 +4,7 @@ smoke:
   perl1:
     url: http://search.cpan.org/CPAN/authors/id/R/RJ/RJBS/perl-5.12.3.tar.gz
   perl2:
-    commit: c142532219286314b83d763ae2a9ab5e34180ef0
+    commit: 167630b6ab7e291cbd4f89943a3aec8d6a1ecbfc
 #  run_in: screen
 
   modlist:
