@@ -68,10 +68,12 @@ if ($smoke_config_file) {
 
 my $dist2rt;
 my $dist2fixed;
+my $dist2ignore;
 if ($org_file) {
     my %res = read_org_file($org_file);
-    $dist2rt    = $res{dist2rt};
-    $dist2fixed = $res{dist2fixed};
+    $dist2rt     = $res{dist2rt};
+    $dist2fixed  = $res{dist2fixed};
+    $dist2ignore = $res{dist2ignore};
 }
 
 my %hist1 = %{ read_history($hist1) };
@@ -124,6 +126,9 @@ DIST: for my $dist (sort keys %dists) {
 	    my $fulldist = CPAN::Shell->expand("Distribution", "/\\/$dist/");
 	    $dist = $fulldist->id if $fulldist;
 	}
+	if ($show_minimal && $show_minimal >= 3 && $dist2ignore->{$dist}) {
+	    next DIST;
+	}
 	printf "%-55s %s", $dist, $res;
 	if ($dist2rt->{$dist}) {
 	    print "\t$dist2rt->{$dist}";
@@ -160,6 +165,7 @@ sub read_org_file {
 	or die "Can't open $file: $!";
     my %dist2rt;
     my %dist2fixed;
+    my %dist2ignore;
     my $maybe_current_dist;
     while(<$fh>) {
 	chomp;
@@ -170,11 +176,14 @@ sub read_org_file {
 		$dist2rt{$maybe_current_dist} = $1;
 	    } elsif (m{(fixed in \d\S*)}) {
 		$dist2fixed{$maybe_current_dist} = $1;
+	    } elsif (m{\bignore\b}) {
+		$dist2ignore{$maybe_current_dist} = 1;
 	    }
 	}
     }
     (dist2rt    => \%dist2rt,
      dist2fixed => \%dist2fixed,
+     dist2ignore => \%dist2ignore,
     );
 }
  
