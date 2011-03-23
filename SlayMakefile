@@ -314,6 +314,7 @@ start-smoking:
 					die "@cmd failed: $!";
 				}
 			}
+			sleep 10; # make the smokers slightly off, so test suites which cannot run in parallel don't fail
 		}
 	}
 
