@@ -1,0 +1,8 @@
+Can.t locate .* in @INC
+POD spelling
+Perl::Critic found these violations in 
+Failed test .Pod coverage
+Pod coverage on
+private mem
+L<text|scheme:...> is invalid according to perlpod
+Failed test .Valid signature.
