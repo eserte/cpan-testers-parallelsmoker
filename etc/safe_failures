@@ -6,3 +6,9 @@ Pod coverage on
 private mem
 L<text|scheme:...> is invalid according to perlpod
 Failed test .Valid signature.
+This Perl not built to support threads
+UNIVERSAL->import is deprecated and will be removed in a future perl at 
+Operation "eq": no method found,
+Coverage for .* is .*%, with .* naked subroutines:
+Can't store REGEXP items at .*/Storable.pm
+The attribute 'strip_comments' does not exist in the dialect 
