@@ -12,3 +12,8 @@ Operation "eq": no method found,
 Coverage for .* is .*%, with .* naked subroutines:
 Can't store REGEXP items at .*/Storable.pm
 The attribute 'strip_comments' does not exist in the dialect 
+JSON::XS::to_json has been renamed to encode_json, either downgrade
+syntax error at .* line .*, near "croak 
+syntax error at .* line .*, near "Carp::croak 
+Can't verify SSL peers without knowning which Certificate Authorities to trust at 
+Undefined subroutine &Date::Manip::ParseDate called at 
