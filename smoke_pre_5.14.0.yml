@@ -4,12 +4,13 @@ smoke:
   perl1:
     url: http://search.cpan.org/CPAN/authors/id/R/RJ/RJBS/perl-5.12.3.tar.gz
   perl2:
-    commit: v5.13.11-100-g167630b
+#    commit: v5.13.11-100-g167630b
+    commit: 167630b6ab7e291cbd4f89943a3aec8d6a1ecbfc
 #  run_in: screen
 
   modlist:
 ## First run:
-    file: /tmp/2005-2010.mod.2
+#    file: /tmp/2005-2010.mod.2
 # file created with (use zsh):
 #   ~/work/srezic-misc/scripts/cpan_allpackages -perl /usr/perl5.12.3/bin/perl > ~/var/tested-cpan-i386-FreeBSD-5.12.3
 #   perl5.12.0 -S find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
@@ -28,3 +29,11 @@ smoke:
 #   /usr/perl5.12.3/bin/perl ~/devel-biokovo/find_dangerous_cpan_distributions.pl | perl -pe 's{^./../}{}' >| /tmp/dangerousdists
 #   sort ~/var/tested-cpan-i386-linux-5.12.3  | grep -v '^\?' | egrep -v "(FAIL|DISCARD|UNKNOWN)" | egrep '^20(10|0[56789])' | perl -nale 'BEGIN { %dangerous = do { open my $fh, "/tmp/dangerousdists" or die $!; chomp(my @x = <$fh>); map {($_,1)} @x } } if (!$dangerous{$F[1]}) { print $F[1] }' > /tmp/2005-2010.2
 #   /usr/perl5.12.3/bin/perl -MParse::CPAN::Packages::Fast -nle 'BEGIN{$p=Parse::CPAN::Packages::Fast->new} $d = $_; $d =~ m{^(.)(.)}; $d = "$1/$1$2/$d"; if ($do = eval { $p->distribution($d) }) { $firstp = ($do->contains)[0]->package; if (!$seen{$firstp}++) { print $firstp } }' /tmp/2005-2010.2 > /tmp/2005-2010.mod.2
+#
+#
+## Second run
+    file: /tmp/2005-2011.modlist
+# Created using:
+#
+#    perl5.12.3 ./utils/create_modlist_by_years.pl -years 2005..2011 -perl /usr/perl5.12.3/bin/perl > /tmp/2005-2011.modlist
+#
