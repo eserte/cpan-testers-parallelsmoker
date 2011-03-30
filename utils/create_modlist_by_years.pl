@@ -25,28 +25,41 @@ my($find_dangerous_cpan_distributions_script) =
 die "Cannot find find_dangerous_cpan_distributions.pl" if !$find_dangerous_cpan_distributions_script;
 
 my $perl;
-my $years_range;
+my $years_range_in;
 GetOptions("perl=s" => \$perl,
-	   "years=s" => \$years_range,
+	   "years=s" => \$years_range_in,
 	  ) or die "usage?";
 sub usage_years_range () { die "Please specify years range in the form YYYY..YYYY or YYYY.." }
-$years_range or usage_years_range;
+$years_range_in or usage_years_range;
 $perl or die "Please specify -perl /path/to/perl";
 
-my($year_from, $year_to);
-if ($years_range =~ m{^(\d{4})\.\.(\d{4})$}) {
-    ($year_from, $year_to) = ($1, $2);
-} elsif ($years_range =~ m{(\d{4})\.\.$}) {
-    $year_from = $1;
-    $year_to = ((localtime)[5]) + 1900;
-} else {
-    usage_years_range;
+my $years_rx;
+{
+    my @years_ranges = split /,/, $years_range_in;
+    my %years;
+    for my $years_range (@years_ranges) {
+	my($year_from, $year_to);
+	if ($years_range =~ m{^(\d{4})\.\.(\d{4})$}) {
+	    ($year_from, $year_to) = ($1, $2);
+	} elsif ($years_range =~ m{(\d{4})\.\.$}) {
+	    $year_from = $1;
+	    $year_to = ((localtime)[5]) + 1900;
+	} else {
+	    usage_years_range;
+	}
+	if ($year_from > $year_to) {
+	    die "years_from must be smaller or equal years_to";
+	}
+	for my $year ($year_from .. $year_to) {
+	    $years{$year} = 1;
+	}
+    }
+    if (!keys %years) {
+	usage_years_range;
+    }
+    $years_rx = '(' . join("|", map { quotemeta } keys %years) . ')';
+    $years_rx = qr{$years_rx};
 }
-if ($year_from > $year_to) {
-    die "years_from must be smaller or equal years_to";
-}
-my $years_rx = '(' . join("|", map { quotemeta } $year_from..$year_to) . ')';
-$years_rx = qr{$years_rx};
 
 my $pf = Parse::CPAN::Packages::Fast->new;
 
@@ -101,7 +114,7 @@ warn "Various filters (FAIL, year, dangerous...)...\n";
 	or die $!;
 
     my %seen;
-    @date_dists = sort @date_dists; # sort by date
+    @date_dists = sort { $b cmp $a } @date_dists; # sort by date, newest first
     for my $date_dist (@date_dists) {
 	my(@fields) = split /\s+/, $date_dist;
 	my $dist = $fields[1];
@@ -109,6 +122,7 @@ warn "Various filters (FAIL, year, dangerous...)...\n";
 	if ($dist =~ m{^(.)(.)}) {
 	    $dist = "$1/$1$2/$dist";
 	    if (my $dist_o = eval { $pf->distribution($dist) }) {
+		# XXX should find shortest module here, and Bundles should get a lower priority XXX
 		my $first_p = ($dist_o->contains)[0]->package;
 		if (!$seen{$first_p}++) {
 		    print $first_p, "\n";
