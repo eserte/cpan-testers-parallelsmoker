@@ -32,8 +32,33 @@ smoke:
 #
 #
 ## Second run
-    file: /tmp/2005-2011.modlist
+#   file: /tmp/2005-2011.modlist
 # Created using:
 #
 #    perl5.12.3 ./utils/create_modlist_by_years.pl -years 2005..2011 -perl /usr/perl5.12.3/bin/perl > /tmp/2005-2011.modlist
+#
+## Third run
+#    file: /tmp/2005-2011.modlist.cont1
+# (continuation of a aborted run)
+## Forth run
+#    file: /tmp/2005-2011.modlist.cont2
+# (continuation of a aborted run)
+## 5th run
+#    file: /tmp/2005-2011.modlist.cont3
+# (continuation of a aborted run)
+## 6th run, older distros
+    file: /tmp/2002-2004.modlist
+# Created using:
+#
+#    perl5.12.3 ./utils/create_modlist_by_years.pl -years 2002..2004 -perl /usr/perl5.12.3/bin/perl > /tmp/2002-2004.modlist
+#    chmod ugo+r /tmp/2002-2004.modlist
+#
+## 7th run, everything with options: -skiptested
+    file: /tmp/2002-2011.modlist
+  options:
+    skiptested: 1
+# Created using:
+#
+#    perl5.12.3 ./utils/create_modlist_by_years.pl -years 2002..2011 -perl /usr/perl5.12.3/bin/perl >| /tmp/2002-2011.modlist
+#    chmod ugo+r /tmp/2002-2011.modlist
 #
