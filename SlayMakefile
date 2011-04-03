@@ -208,14 +208,28 @@ install-perl:
 
 prepare-smoker-modules:
 	{
-		# XXX should handle devel perl versions (with perlver)
+		my @toolchain_modules = qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter);
 		for my $key (qw(perl2 perl1)) {
 			my $perl_exe = $CONFIG->{$key}->{installdir} . "/bin/perl";
+
+			print STDERR "INFO: now checking if CPAN::Reporter is already available...\n";
+			system $perl_exe, "-MCPAN::Reporter", "-e1";
+			my $cpan_reporter_available = $? == 0;
+
+			print STDERR "INFO: installing toolchain modules...\n";
 			cpan_smoke_modules(["-perl", $perl_exe,
 					    "-nosignalend",
-					    "-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter)]);
+					    "-install", @toolchain_modules]);
 			system $perl_exe, "-MCPAN::Reporter", "-e1";
 			$? == 0 or die "Cannot build CPAN::Reporter for $perl_exe? Status=$?";
+
+			if (!$cpan_reporter_available) {
+				print STDERR "INFO: smoke toolchain modules...\n";
+				cpan_smoke_modules(["-perl", $perl_exe,
+					    	    "-nosignalend",
+						    "-skiptested", # shouldn't be necessary, but be sure
+					    	    @toolchain_modules]);
+			}
 		}
 	}
 
