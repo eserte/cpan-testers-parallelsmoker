@@ -182,43 +182,46 @@ dump-config:
 
 download-perl:
 	{
-	  	download_perl $CONFIG->{perl1};
 		download_perl $CONFIG->{perl2};
+	  	download_perl $CONFIG->{perl1};
 	}
 
 extract-perl:
 	{
-		-e $CONFIG->{perl1}->{builddir} or extract_perl $CONFIG->{perl1};
 		-e $CONFIG->{perl2}->{builddir} or extract_perl $CONFIG->{perl2};
+		-e $CONFIG->{perl1}->{builddir} or extract_perl $CONFIG->{perl1};
 	}
 
 build-perl:
 	{
 		our $force;
-		(!$force && -e $CONFIG->{perl1}->{builddir} . '/perl') or build_perl $CONFIG->{perl1};
 		(!$force && -e $CONFIG->{perl2}->{builddir} . '/perl') or build_perl $CONFIG->{perl2};
+		(!$force && -e $CONFIG->{perl1}->{builddir} . '/perl') or build_perl $CONFIG->{perl1};
 	}
 
 install-perl:
 	{
 		our $force;
-		(!$force && -e $CONFIG->{perl1}->{installdir}) or install_perl $CONFIG->{perl1};
 		(!$force && -e $CONFIG->{perl2}->{installdir}) or install_perl $CONFIG->{perl2};
+		(!$force && -e $CONFIG->{perl1}->{installdir}) or install_perl $CONFIG->{perl1};
 	}
 
 prepare-smoker-modules:
 	{
 		# XXX should handle devel perl versions (with perlver)
-		for my $key (qw(perl1 perl2)) {
-			cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+		for my $key (qw(perl2 perl1)) {
+			my $perl_exe = $CONFIG->{$key}->{installdir} . "/bin/perl";
+			cpan_smoke_modules(["-perl", $perl_exe,
 					    "-nosignalend",
 					    "-install", qw(YAML::Syck Term::ReadKey Expect Term::ReadLine::Perl CPAN::Reporter)]);
+			system $perl_exe, "-MCPAN::Reporter", "-e1";
+			$? == 0 or die "Cannot build CPAN::Reporter for $perl_exe? Status=$?";
 		}
 	}
 
 prepare-smoker-config:
 	{
-		for my $key (qw(perl1 perl2)) {
+		for my $key (qw(perl2 perl1)) {
 			ensure_dir $CONFIG->{$key}->{configdir};
 			my $cpanreporterdir = $CONFIG->{$key}->{configdir} . "/cpanreporter";
 			ensure_dir $cpanreporterdir;
@@ -267,8 +270,10 @@ create-modlist:
 install-mod:
 	{
 		if ($CONFIG->{want_mod_comparison}) {
-			for my $def (['perl1', 'mod1'],
-				     ['perl2', 'mod2']) {
+			for my $def (
+				     ['perl2', 'mod2'],
+				     ['perl1', 'mod1'],
+				    ) {
 				my($key, $modkey) = @$def;
 				my $url = $CONFIG->{$modkey}->{url};
 				die "No url set in mod1/mod2" if !$url;
@@ -285,7 +290,7 @@ start-smoking:
 		if (!-e $modlist) {
 			die "$modlist was not yet created, please run create-modlist rule"; # XXX should be done automatically
 		}
-		for my $key (qw(perl1 perl2)) {
+		for my $key (qw(perl2 perl1)) {
 			my @smoke_cmd = cpan_smoke_modules_cmd
 				(
 					[(!exists $OPTIONS->{skiptested} || $OPTIONS->{skiptested} ? "-skiptested" : ()),
