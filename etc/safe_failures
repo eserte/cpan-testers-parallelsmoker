@@ -1,5 +1,5 @@
 Can.t locate .* in @INC
-POD spelling
+#too short: POD spelling
 Perl::Critic found these violations in 
 Failed test .Pod coverage
 Pod coverage on
