@@ -122,14 +122,15 @@ DIST: for my $dist (sort keys %dists) {
 	}
     }
     if ($res) {
+	my $dist_or_fulldist = $dist;
 	if ($show_fulldist) {
 	    my $fulldist = CPAN::Shell->expand("Distribution", "/\\/$dist/");
-	    $dist = $fulldist->id if $fulldist;
+	    $dist_or_fulldist = $fulldist->id if $fulldist;
 	}
 	if ($show_minimal && $show_minimal >= 3 && $dist2ignore->{$dist}) {
 	    next DIST;
 	}
-	printf "%-55s %s", $dist, $res;
+	printf "%-55s %s", $dist_or_fulldist, $res;
 	if ($dist2rt->{$dist}) {
 	    print "\t$dist2rt->{$dist}";
 	}
