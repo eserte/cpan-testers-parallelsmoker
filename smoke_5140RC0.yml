@@ -14,3 +14,5 @@ smoke:
 ## First run:
 ## perl5.12.3 ./utils/create_modlist_by_years.pl -years 2005..2011 -perl ~cpansand/var/ctps/2pre5140/install/perl-5.12.3/bin/perl >| /tmp/2005-2011.modlist
     file: /tmp/2005-2011.modlist
+  options:
+    skiptested: 1
