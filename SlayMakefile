@@ -225,10 +225,11 @@ prepare-smoker-modules:
 
 			if (!$cpan_reporter_available) {
 				print STDERR "INFO: smoke toolchain modules...\n";
-				cpan_smoke_modules(["-perl", $perl_exe,
-					    	    "-nosignalend",
-						    "-skiptested", # shouldn't be necessary, but be sure
-					    	    @toolchain_modules]);
+				my @smoke_cmd = cpan_smoke_modules_cmd(["-perl", $perl_exe,
+					    				"-nosignalend",
+									"-skiptested", # shouldn't be necessary, but be sure
+					    	    			@toolchain_modules]);
+				warn "NYI: run @smoke_cmd";
 			}
 		}
 	}
