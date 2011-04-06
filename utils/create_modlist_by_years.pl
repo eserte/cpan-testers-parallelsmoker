@@ -122,8 +122,10 @@ warn "Various filters (FAIL, year, dangerous...)...\n";
 	if ($dist =~ m{^(.)(.)}) {
 	    $dist = "$1/$1$2/$dist";
 	    if (my $dist_o = eval { $pf->distribution($dist) }) {
-		# XXX should find shortest module here, and Bundles should get a lower priority XXX
-		my $first_p = ($dist_o->contains)[0]->package;
+		# find shortest module here
+		# XXX Bundles should get a lower priority XXX
+		my @packages = sort { length($a) <=> length($b) } map { $_->package } $dist_o->contains;
+		my $first_p = $packages[0];
 		if (!$seen{$first_p}++) {
 		    print $first_p, "\n";
 		}
