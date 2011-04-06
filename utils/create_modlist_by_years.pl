@@ -5,6 +5,7 @@ use File::Temp qw(tempfile);
 use Getopt::Long;
 use List::Util qw(first);
 use Parse::CPAN::Packages::Fast;
+use Tie::IxHash;
 
 my($cpan_allpackages_script) =
     grep { -x $_ } ("$ENV{HOME}/work/srezic-misc/scripts/cpan_allpackages",
@@ -24,14 +25,14 @@ my($find_dangerous_cpan_distributions_script) =
 		   );
 die "Cannot find find_dangerous_cpan_distributions.pl" if !$find_dangerous_cpan_distributions_script;
 
-my $perl;
+my @perls;
 my $years_range_in;
-GetOptions("perl=s" => \$perl,
+GetOptions('perl=s@' => \@perls,
 	   "years=s" => \$years_range_in,
 	  ) or die "usage?";
 sub usage_years_range () { die "Please specify years range in the form YYYY..YYYY or YYYY.." }
 $years_range_in or usage_years_range;
-$perl or die "Please specify -perl /path/to/perl";
+@perls or die "Please specify -perl /path/to/perl";
 
 my $years_rx;
 {
@@ -63,23 +64,25 @@ my $years_rx;
 
 my $pf = Parse::CPAN::Packages::Fast->new;
 
-warn "Find list of already tested distributions for this perl...\n";
+warn "Find list of already tested distributions for " . (@perls == 1 ? "this perl" : "these perls") . "...\n";
 my $tested_list;
 {
     my $tmpfh;
-    ($tmpfh,$tested_list) = tempfile(SUFFIX => '_tested_list', UNLINK => 1)
+    ($tmpfh,$tested_list) = tempfile(SUFFIX => '_tested_list', UNLINK => 0)
 	or die $!;
-    my @cmd = ($^X, $cpan_allpackages_script, "-perl", $perl);
-    warn "  @cmd ...\n";
-    open my $fh, "-|", @cmd
-	or die "@cmd: $!";
-    while(<$fh>) {
-	print $tmpfh $_;
+    for my $perl (@perls) {
+	my @cmd = ($^X, $cpan_allpackages_script, "-perl", $perl);
+	warn "  @cmd ...\n";
+	open my $fh, "-|", @cmd
+	    or die "@cmd: $!";
+	while(<$fh>) {
+	    print $tmpfh $_;
+	}
+	close $fh
+	    or die "@cmd: $!";
     }
     close $tmpfh
 	or die $!;
-    close $fh
-	or die "@cmd: $!";
 }
 
 warn "Find dangerous cpan distributions...\n";
@@ -100,23 +103,30 @@ my %dangerous;
 
 warn "Various filters (FAIL, year, dangerous...)...\n";
 {
-    my @date_dists;
+    my %fail_dist;
+    tie my %date_dists, 'Tie::IxHash';
     open my $ifh, $tested_list
 	or die $!;
     while(<$ifh>) {
 	next if /^\?/;
-	next if /(FAIL|DISCARD|UNKNOWN)/;
-	next if $_ !~ $years_rx;
 	chomp;
-	push @date_dists, $_;
+	my @f = split /\s+/, $_, 3;
+	next if !defined $f[1];
+	next if $fail_dist{$f[1]};
+	if ($f[2] =~ /(FAIL|DISCARD|UNKNOWN)/) {
+	    delete $date_dists{$f[1]};
+	    $fail_dist{$f[1]} = 1;
+	    next;
+	}
+	next if $f[0] !~ $years_rx;
+	$date_dists{$f[1]} = [@f];
     }
     close $ifh
 	or die $!;
 
     my %seen;
-    @date_dists = sort { $b cmp $a } @date_dists; # sort by date, newest first
-    for my $date_dist (@date_dists) {
-	my(@fields) = split /\s+/, $date_dist;
+    for my $date_dist (sort { $b->[0] cmp $a->[0] } values %date_dists) {# sort by date, newest first
+	my(@fields) = @$date_dist;
 	my $dist = $fields[1];
 	next if $dangerous{$dist};
 	if ($dist =~ m{^(.)(.)}) {
