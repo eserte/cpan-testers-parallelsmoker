@@ -200,3 +200,16 @@ sub read_org_file {
 }
  
 __END__
+
+# TODO: documentation, especially of the org mode file
+#
+# org mode file, special tags and text:
+# * first level sections may contain the tag :IGNORE_IN_COMPARISONS:
+#   which will cause all distributions in this section to be
+#   ignored in comparisons
+# * distribution names (without author, with version) in section level
+#   two or higher
+# * a full cpan rt link is detected and displayed in a special column
+# * a "fixed in ...." string is detected
+# * if the word "ignore" appears in the text, then the distribution
+#   will be ignored in comparisons
