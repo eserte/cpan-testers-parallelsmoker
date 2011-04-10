@@ -168,10 +168,21 @@ sub read_org_file {
     my %dist2fixed;
     my %dist2ignore;
     my $maybe_current_dist;
+    my $ignore_current_section = 0;
     while(<$fh>) {
 	chomp;
-	if (/^\*+\s*(\S+)/) {
+	if (/^\*\s+(.*)/) {
+	    my $section_line = $1;
+	    if ($section_line =~ m{:IGNORE_IN_COMPARISONS:}) {
+		$ignore_current_section = 1;
+	    } else {
+		$ignore_current_section = 0;
+	    }
+	} elsif (/^\*\*+\s*(\S+)/) {
 	    $maybe_current_dist = $1;
+	    if ($ignore_current_section) {
+		$dist2ignore{$maybe_current_dist} = 1;
+	    }
 	} elsif ($maybe_current_dist) {
 	    if (m{(http.*?rt.cpan.org\S+Display.html\?id=\d+)}) {
 		$dist2rt{$maybe_current_dist} = $1;
