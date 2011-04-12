@@ -129,7 +129,7 @@
 	}
 }
 
-all:	download-perl extract-perl build-perl install-perl prepare-smoker-modules prepare-smoker-config create-modlist install-mod start-smoking
+all:	pre-checks download-perl extract-perl build-perl install-perl prepare-smoker-modules prepare-smoker-config create-modlist install-mod start-smoking
 
 help:
 	{
@@ -178,6 +178,13 @@ dump-config:
 	{
 		require Data::Dumper;
 		print Data::Dumper::Dumper($CONFIG);
+	}
+
+pre-checks:
+	{
+		if ($CONFIG->{modlist}->{file} && !-r $CONFIG->{modlist}->{file}) {
+			die "The modlist file '$CONFIG->{modlist}->{file}' is not readable";
+		}
 	}
 
 download-perl:
