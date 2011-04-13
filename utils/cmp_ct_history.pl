@@ -184,7 +184,10 @@ sub read_org_file {
 		$dist2ignore{$maybe_current_dist} = 1;
 	    }
 	} elsif ($maybe_current_dist) {
-	    if (m{(http.*?rt.cpan.org\S+Display.html\?id=\d+)}) {
+	    if (m{(
+		      http.*?rt.cpan.org\S+Display.html\?id=\d+
+		  |   http.*?rt.perl.org\S+Display.html\?id=\d+
+		  )}x) {
 		$dist2rt{$maybe_current_dist} = $1;
 	    } elsif (m{(fixed in \d\S*)}) {
 		$dist2fixed{$maybe_current_dist} = $1;
