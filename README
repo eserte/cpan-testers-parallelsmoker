@@ -1,0 +1,92 @@
+Smoke the CPAN in parallel
+--------------------------
+
+The idea to find regressions between e.g. two perl versions or two
+versions of a perl module. The CPAN::Testers::ParallelSmoker framework
+helps to setup such a system with small effort, i.e. writing a small
+configuration file should be enough.
+
+Documentation is not there yet, unfortunately, and initial efforts to
+get the smoker running is still high. But after this step it is quite
+easy to create new smokers.
+
+Installation
+------------
+
+Currently it's not proposed to install this distribution the usual
+way. Just fetch all the prerequisites mentioned in the Makefile.PL
+(easiest to be done with "cpan -t ."). Note that not all prerequisites
+are strictly needed for the parallel smoker; some are just for
+analyzing utilities.
+
+Writing the configuration file
+------------------------------
+
+Create a YAML file which looks like the existing smoke*.yml files in
+the distribution (toplevel directory or "archive" directory).
+
+The most important fields are:
+
+* testlabel: a unique, short label which is used to create unique
+  subdirectories per smoke run. Do not use exotic characters.
+
+* perl1, perl2: If comparing two perls, then specify either the url to
+  fetch the perl distribution from, or a commit id, if building a
+  specific bleadperl version is needed.
+
+* git_repository: The filesystem path to a git clone of perl's source.
+  This is needed if any of perl1 or perl2 is specified by "commit".
+
+* modlist: a list of modules to smoke. Best is to use the utility
+  "utils/create_modlist_by_years.pl" for this. Note that the first run
+  of this utility is usually quite slow, as many files from CPAN need
+  to be fetched (a local copy could help here).
+
+Starting the smoker
+-------------------
+
+    slaymake CONFIG_FILE=smoke_something.yml
+
+This will fetch, extract, build the perls, install the toolchain
+needed for distroprefs and sending reports, and finally starting two
+xterms where the modules are smoked.
+
+The reports are stored in the directory
+
+    ~/var/ctps/$testlabel/reports/$perl
+
+A comparison can be created using
+
+    ./utils/cmp_ct_history.pl -config smoke_....yml
+
+This list is usually too large. You can add to the commandline up to
+four "-min" to minimize the list.
+
+Known problems
+--------------
+
+* Interactive distribution
+
+  Some distributions ask interactive questions while configuration.
+  Usually this can be solved by creating a CPAN.pm distropref entry
+  for such distribution. Existing sample distroprefs exist here:
+
+    http://github.com/eserte/srezic-cpan-distroprefs
+
+  or 
+
+    http://github.com/andk/cpanpm
+  
+  Unfortunately distroprefs are usually not universally applicable,
+  and often depend on a particular system configuration.
+
+* Hanging tests
+
+  There's no fix yet for this. Hanging tests are not automatically
+  recognized, so you have to kill it yourself, and probably protect
+  the smoker by disabling such distribution (e.g. using distroprefs).
+
+* Tests using fixed named resources
+
+  Some tests use e.g. a fixed port for daemons or a fixed file path
+  and cause unnecessary failures.
