@@ -1,10 +1,10 @@
 Smoke the CPAN in parallel
 --------------------------
 
-The idea to find regressions between e.g. two perl versions or two
-versions of a perl module. The CPAN::Testers::ParallelSmoker framework
-helps to setup such a system with small effort, i.e. writing a small
-configuration file should be enough.
+The idea is to find regressions between e.g. two perl versions or two
+versions of a basic perl module. The CPAN::Testers::ParallelSmoker
+framework helps to setup such a system with small effort, i.e. writing
+a small configuration file should be enough.
 
 Documentation is not there yet, unfortunately, and initial efforts to
 get the smoker running is still high. But after this step it is quite
@@ -23,7 +23,7 @@ Writing the configuration file
 ------------------------------
 
 Create a YAML file which looks like the existing smoke*.yml files in
-the distribution (toplevel directory or "archive" directory).
+the distribution (in the toplevel directory or "archive" directory).
 
 The most important fields are:
 
@@ -65,7 +65,7 @@ four "-min" to minimize the list.
 Known problems
 --------------
 
-* Interactive distribution
+* Interactive distributions
 
   Some distributions ask interactive questions while configuration.
   Usually this can be solved by creating a CPAN.pm distropref entry
@@ -78,7 +78,8 @@ Known problems
     http://github.com/andk/cpanpm
   
   Unfortunately distroprefs are usually not universally applicable,
-  and often depend on a particular system configuration.
+  and often depend on a particular system configuration (OS, installed
+  package set).
 
 * Hanging tests
 
