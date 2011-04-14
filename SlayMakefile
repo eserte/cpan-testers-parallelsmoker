@@ -73,6 +73,12 @@
 	sub extract_perl_from_git ($) {
 		my $perl_spec = $_[0];
 		my $git_repository = $CONFIG->{git_repository} || die "Please set 'git_repository' in config";
+		save_pwd {
+			chdir $git_repository
+				or die "Cannot chdir to $git_repository: $!";
+			my @fetch_cmd = ('git', 'fetch');
+			system @fetch_cmd; # don't fail here
+		};
 		# git clone is verbose enough, no need for diagnostics
 		my @clone_cmd = ("git", "clone", "-n", $git_repository, $perl_spec->{builddir});
 		system @clone_cmd;
