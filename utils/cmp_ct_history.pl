@@ -52,7 +52,7 @@ my($hist1, $hist2);
 if ($smoke_config_file) {
     require CPAN::Testers::ParallelSmoker;
     CPAN::Testers::ParallelSmoker::load_config($smoke_config_file);
-    CPAN::Testers::ParallelSmoker::set_home((getpwnam("cpansand"))[7]);
+    CPAN::Testers::ParallelSmoker::set_home((getpwnam("cpansand"))[7]); # XXX do not hardcode!!!
     CPAN::Testers::ParallelSmoker::expand_config();
     $hist2 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl1}->{configdir} . '/cpanreporter/reports-sent.db';
     $hist1 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db';
@@ -169,6 +169,7 @@ sub read_org_file {
     my %dist2ignore;
     my $maybe_current_dist;
     my $ignore_current_section = 0;
+    my $current_section_is_fixed = 0;
     while(<$fh>) {
 	chomp;
 	if (/^\*\s+(.*)/) {
@@ -178,8 +179,16 @@ sub read_org_file {
 	    } else {
 		$ignore_current_section = 0;
 	    }
+	    if ($section_line =~ m{:FIXED:}) {
+		$current_section_is_fixed = 1;
+	    } else {
+		$current_section_is_fixed = 0;
+	    }
 	} elsif (/^\*\*+\s*(\S+)/) {
 	    $maybe_current_dist = $1;
+	    if ($current_section_is_fixed) {
+		next;
+	    }
 	    if ($ignore_current_section) {
 		$dist2ignore{$maybe_current_dist} = 1;
 	    }
@@ -188,6 +197,9 @@ sub read_org_file {
 		      http.*?rt.cpan.org\S+Display.html\?id=\d+
 		  |   http.*?rt.perl.org\S+Display.html\?id=\d+
 		  )}x) {
+		if ($current_section_is_fixed) {
+		    next;
+		}
 		$dist2rt{$maybe_current_dist} = $1;
 	    } elsif (m{(fixed in \d\S*)}) {
 		$dist2fixed{$maybe_current_dist} = $1;
