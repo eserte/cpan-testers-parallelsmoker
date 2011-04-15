@@ -70,15 +70,17 @@ if ($perl) {
 local $^W = 0; # no warning if PERL_CPAN_REPORTER_DIR is unset
 local $ENV{PERL_CPAN_REPORTER_DIR} = $ENV{PERL_CPAN_REPORTER_DIR} if $ENV{PERL_CPAN_REPORTER_DIR};
 if (!$ENV{PERL_CPAN_REPORTER_DIR}) {
-    my $perl_prefix = `$perl -MConfig -e 'print \$Config{prefix}'`;
-    if ($perl_prefix && open my $fh, "$perl_prefix/.cpanreporterdir") {
-	chomp(my $reporter_dir = <$fh>);
-	if ($reporter_dir) {
-	    if (!-d $reporter_dir) {
-		warn "Specified reporter dir <$reporter_dir> does not exist, cannot use...";
-	    } else {
-		warn "Using .cpanreporter directory $reporter_dir...\n";
-		$ENV{PERL_CPAN_REPORTER_DIR} = $reporter_dir;
+    if ($perl) {
+	my $perl_prefix = `$perl -MConfig -e 'print \$Config{prefix}'`;
+	if ($perl_prefix && open my $fh, "$perl_prefix/.cpanreporterdir") {
+	    chomp(my $reporter_dir = <$fh>);
+	    if ($reporter_dir) {
+		if (!-d $reporter_dir) {
+		    warn "Specified reporter dir <$reporter_dir> does not exist, cannot use...";
+		} else {
+		    warn "Using .cpanreporter directory $reporter_dir...\n";
+		    $ENV{PERL_CPAN_REPORTER_DIR} = $reporter_dir;
+		}
 	    }
 	}
     }
@@ -300,3 +302,7 @@ sub safe_version {
 }
 
 __END__
+
+=head1 NAME
+
+cpan_allpackages
