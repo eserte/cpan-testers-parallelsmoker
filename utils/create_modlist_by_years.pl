@@ -1,36 +1,25 @@
 #!/usr/bin/perl -w
 
 use strict;
+use FindBin;
 use File::Temp qw(tempfile);
 use Getopt::Long;
 use List::Util qw(first);
 use Parse::CPAN::Packages::Fast;
 use Tie::IxHash;
 
-my($cpan_allpackages_script) =
-    grep { -x $_ } ("$ENV{HOME}/work/srezic-misc/scripts/cpan_allpackages",
-		    "$ENV{HOME}/work2/srezic-misc/scripts/cpan_allpackages",
-		    "/home/e/eserte/work/srezic-misc/scripts/cpan_allpackages",
-		    "/home/slavenr/work2/srezic-misc/scripts/cpan_allpackages",
-		   );
-die "Cannot find cpan_allpackages script" if !$cpan_allpackages_script;
+my($cpan_allpackages_script) = "$FindBin::RealBin/cpan_allpackages";
+die "Cannot find cpan_allpackages script" if !-x $cpan_allpackages_script;
 
-my($find_dangerous_cpan_distributions_script) =
-    grep { -x $_ } ("$ENV{HOME}/devel/find_dangerous_cpan_distributions.pl",
-		    "$ENV{HOME}/devel-biokovo/find_dangerous_cpan_distributions.pl",
-		    "$ENV{HOME}/devel-biokovo.git/find_dangerous_cpan_distributions.pl",
-		    "/home/e/eserte/devel/find_dangerous_cpan_distributions.pl",
-		    "/home/slavenr/devel-biokovo/find_dangerous_cpan_distributions.pl",
-		    "/home/slavenr/devel-biokovo.git/find_dangerous_cpan_distributions.pl",
-		   );
-die "Cannot find find_dangerous_cpan_distributions.pl" if !$find_dangerous_cpan_distributions_script;
+my($find_dangerous_cpan_distributions_script) = "$FindBin::RealBin/find_dangerous_cpan_distributions.pl";
+die "Cannot find find_dangerous_cpan_distributions.pl" if !-x $find_dangerous_cpan_distributions_script;
 
 my @perls;
 my $years_range_in;
 GetOptions('perl=s@' => \@perls,
 	   "years=s" => \$years_range_in,
 	  ) or die "usage?";
-sub usage_years_range () { die "Please specify years range in the form YYYY..YYYY or YYYY.." }
+sub usage_years_range () { die "Please specify years range in the form -years YYYY..YYYY or -years YYYY.." }
 $years_range_in or usage_years_range;
 @perls or die "Please specify -perl /path/to/perl";
 
