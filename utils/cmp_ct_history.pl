@@ -169,7 +169,7 @@ sub read_org_file {
     my %dist2ignore;
     my $maybe_current_dist;
     my $ignore_current_section = 0;
-    my $current_section_is_fixed = 0;
+    my $current_section_is_fixed_or_redo = 0;
     while(<$fh>) {
 	chomp;
 	if (/^\*\s+(.*)/) {
@@ -179,14 +179,14 @@ sub read_org_file {
 	    } else {
 		$ignore_current_section = 0;
 	    }
-	    if ($section_line =~ m{:FIXED:}) {
-		$current_section_is_fixed = 1;
+	    if ($section_line =~ m{:(FIXED|REDO):}) {
+		$current_section_is_fixed_or_redo = 1;
 	    } else {
-		$current_section_is_fixed = 0;
+		$current_section_is_fixed_or_redo = 0;
 	    }
 	} elsif (/^\*\*+\s*(\S+)/) {
 	    $maybe_current_dist = $1;
-	    if ($current_section_is_fixed) {
+	    if ($current_section_is_fixed_or_redo) {
 		next;
 	    }
 	    if ($ignore_current_section) {
@@ -197,7 +197,7 @@ sub read_org_file {
 		      http.*?rt.cpan.org\S+Display.html\?id=\d+
 		  |   http.*?rt.perl.org\S+Display.html\?id=\d+
 		  )}x) {
-		if ($current_section_is_fixed) {
+		if ($current_section_is_fixed_or_redo) {
 		    next;
 		}
 		$dist2rt{$maybe_current_dist} = $1;
