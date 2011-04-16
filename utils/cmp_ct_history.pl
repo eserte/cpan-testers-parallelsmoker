@@ -113,7 +113,9 @@ DIST: for my $dist (sort keys %dists) {
 	    }
 	}
 	if ($show_minimal && $show_minimal >= 4) {
-	    unless ($grade_left eq 'FAIL' && $grade_right =~ m{^(UNKNOWN|PASS|NA)$}) {
+	    if ($grade_left =~ m{^(PASS|DISCARD)$}) {
+		next DIST;
+	    } elsif ($grade_right ne 'PASS') {
 		next DIST;
 	    }
 	}
