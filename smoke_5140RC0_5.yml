@@ -1,0 +1,14 @@
+smoke:
+  testlabel: 5140RC0_5
+  git_repository: /home/cpansand/work/perl
+  perl1:
+    url: http://search.cpan.org/CPAN/authors/id/R/RJ/RJBS/perl-5.12.3.tar.gz
+  perl2:
+    commit: v5.13.11-457-gd12b49d
+
+  modlist:
+## First run:
+## perl5.12.3 ./utils/create_modlist_by_years.pl -years 2005..2011 -perl /usr/perl5.12.3/bin/perl -perl ~cpansand/var/ctps/2pre5140/install/perl-5.12.3/bin/perl |grep -v '^Bundle::' | grep -v '^Task::' | grep -v '^MM$' > /tmp/2005-2011.modlist3; chmod ugo+r /tmp/2005-2011.modlist3
+    file: /tmp/2005-2011.modlist3
+  options:
+    skiptested: 1
