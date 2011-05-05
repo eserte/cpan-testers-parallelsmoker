@@ -144,8 +144,9 @@ DIST: for my $dist (sort keys %dists) {
 }
 
 sub read_history {
+    my $file = shift;
     my %hist;
-    open my $ifh, shift
+    open my $ifh, $file
 	or die $!;
     while(<$ifh>) {
 	next if m{^#};
@@ -154,7 +155,7 @@ sub read_history {
 	my($phase, $grade, $dist, $perl, $arch) = $_ =~
 	    m{^(\S+)\s+(\S+)\s+(\S+)\s+\((.*?)\)\s+(.*)};
 	if (!defined $phase) {
-	    warn "Cannot parse $_";
+	    warn "Cannot parse <$_> in $file, skipping line";
 	    next;
 	}
 	push @{ $hist{$dist} }, [$phase, $grade, $perl, $arch];
