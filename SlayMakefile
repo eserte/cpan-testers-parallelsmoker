@@ -289,9 +289,15 @@ create-modlist:
 			system($cmd);
 			die "Command '$cmd' failed: $?" if $? != 0;
 		} elsif ($CONFIG->{modlist}->{file}) {
-			my @cmd = ("cp", $CONFIG->{modlist}->{file}, $CONFIG->{smokerdir} . '/config/modlist');
+			my @cmd = ("cp", $CONFIG->{modlist}->{file}, $modlist);
 			system @cmd; # XXX should use File::Copy
 			die "Command '@cmd' failed" if $? != 0;
+		} elsif ($CONFIG->{modlist}->{command}) {
+			my $cmd = "$CONFIG->{modlist}->{command} > $modlist~";
+			system $cmd;
+			die "Command '$cmd' failed" if $? != 0;
+			rename "$modlist~", $modlist
+				or die "Renaming $modlist~ to $modlist failed: $!";
 		}
 	}
 

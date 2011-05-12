@@ -110,7 +110,8 @@ sub expand_config () {
 	$CONFIG->{$key}->{extract_from_git} = $CONFIG->{$key}->{commit};
     }
     $CONFIG->{modlist}->{dependants} ||= undef;
-    $CONFIG->{modlist}->{file} ||= undef;
+    $CONFIG->{modlist}->{file}       ||= undef;
+    $CONFIG->{modlist}->{command}    ||= undef;
 
     {
 	local $SIG{__WARN__} = sub {}; # lock_hashref_recurse is noisy
