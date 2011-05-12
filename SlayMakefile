@@ -351,6 +351,20 @@ start-smoking:
 		}
 	}
 
+# XXX rather private stuff: smoke modules which need interactivity,
+# and must not be run in parallel
+xxx-interactive-stuff:
+	{
+		my @modules = qw(X11::Protocol Image::Magick);
+		for my $key (qw(perl2 perl1)) {
+			my @smoke_cmd = ($^X, "./utils/cpan_smoke_modules", "-nobatch",
+					      "-perl", $CONFIG->{$key}->{installdir} . "/bin/perl", "-install", 
+					      @modules);
+			0 == system @smoke_cmd
+				or die "@smoke_cmd failed: $!";
+		}
+	}
+
 cmp-ct-history:
 	{
 		# XXX cmp_ct_history.pl should be in utils!
