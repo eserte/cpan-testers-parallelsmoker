@@ -121,12 +121,31 @@ warn "Various filters (FAIL, year, dangerous...)...\n";
 	if ($dist =~ m{^(.)(.)}) {
 	    $dist = "$1/$1$2/$dist";
 	    if (my $dist_o = eval { $pf->distribution($dist) }) {
-		# find shortest module here
-		# XXX Bundles should get a lower priority XXX
-		my @packages = sort { length($a) <=> length($b) } map { $_->package } $dist_o->contains;
-		my $first_p = $packages[0];
-		if (!$seen{$first_p}++) {
-		    print $first_p, "\n";
+		# Translate distname into the best module name
+		my $primary_package;
+
+		my $maybe_primary_package = $dist_o->dist;
+		$maybe_primary_package =~ s{-}{::}g; # e.g. ExtUtils-MakeMaker -> ExtUtils::MakeMaker
+
+		my @packages;
+		for my $contains ($dist_o->contains) {
+		    my $package = $contains->package;
+		    if ($package eq $maybe_primary_package) {
+			$primary_package = $package;
+			last;
+		    }
+		    push @packages, $package;
+		}
+
+		if (!defined $primary_package) {
+		    # find shortest module here
+		    # XXX Bundles should get a lower priority XXX
+		    @packages = sort { length($a) <=> length($b) } @packages;
+		    $primary_package = $packages[0];
+		}
+
+		if (!$seen{$primary_package}++) {
+		    print $primary_package, "\n";
 		}
 	    }
 	}
