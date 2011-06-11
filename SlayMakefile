@@ -375,7 +375,7 @@ cmp-ct-history:
 	{
 		# XXX cmp_ct_history.pl should be in utils!
 		my @cmd = ($^X,
-			   " ./utils/cmp_ct_history.pl",
+			   "./utils/cmp_ct_history.pl",
 		           $CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db',
 		           $CONFIG->{perl1}->{configdir} . '/cpanreporter/reports-sent.db',
 		          );
