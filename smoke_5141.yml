@@ -1,0 +1,13 @@
+smoke:
+  testlabel: 5141
+  git_repository: /home/cpansand/work/perl
+  perl1:
+    url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.14.0.tar.bz2
+  perl2:
+    url: http://search.cpan.org/CPAN/authors/id/J/JE/JESSE/perl-5.14.1.tar.bz2
+  modlist:
+# created using:
+#    ./utils/srezic-modlist.pl > /tmp/2005-2011.modlist3; chmod 644 /tmp/2005-2011.modlist3
+    file: /tmp/2005-2011.modlist3
+  options:
+    skiptested: 1
