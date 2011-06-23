@@ -3,8 +3,8 @@
 set -e
 set -x
 
-#PERL=/usr/perl5.12.3/bin/perl
-PERL=/home/cpansand/var/ctps/5140_1/install/perl-5.14.0/bin/perl
+PERL=/usr/perl5.12.3/bin/perl
+#PERL=/home/cpansand/var/ctps/5140_1/install/perl-5.14.0/bin/perl
 
 perl5.12.3 ./utils/create_modlist_by_years.pl -years 2005..2011 -perl $PERL |\
     grep -v '^Bundle::' |\
