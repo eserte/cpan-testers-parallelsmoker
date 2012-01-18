@@ -17,6 +17,7 @@ use warnings;
 use CPAN::DistnameInfo;
 use Getopt::Long;
 use Parse::CPAN::Packages::Fast;
+use CPAN::Version ();
 
 my $packages_file;# = "/usr/local/src/CPAN/sources/modules/02packages.details.txt.gz";
 my $do_report;
@@ -67,6 +68,12 @@ for my $dist (keys %seen_dist) {
 }
 
 if ($do_filter) {
+    # The newest one is not problematic:
+    for my $dist (@problematic) {
+	my($newest) = sort { CPAN::Version->vcmp($b, $a) } keys %{ $seen_dist{$dist} };
+	delete $seen_dist{$dist}->{$newest};
+    }
+
     my %problematic_dist;
     for my $dist (@problematic) {
 	for (values %{ $seen_dist{$dist} }) {
