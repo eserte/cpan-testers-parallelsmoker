@@ -20,8 +20,11 @@ use Parse::CPAN::Packages::Fast;
 
 my $packages_file;# = "/usr/local/src/CPAN/sources/modules/02packages.details.txt.gz";
 my $do_report;
-GetOptions("packages=s" => \$packages_file)
-    or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-report]";
+my $do_filter;
+GetOptions("packages=s" => \$packages_file,
+	   "filter" => \$do_filter,
+	  )
+    or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter]";
 
 my %resolved = ('CGI'  => ['3.33', '3.34'], # https://rt.cpan.org/Ticket/Display.html?id=48425 (not dangerous)
 		'Geo-Coder-US' => ['0.21'], # large changes in code base, removal of a module
@@ -62,7 +65,39 @@ for my $dist (keys %seen_dist) {
     }
 }
 
-if ($do_report) {
+if ($do_filter) {
+    my %problematic_dist;
+    for my $dist (@problematic) {
+	for (values %{ $seen_dist{$dist} }) {
+	    $problematic_dist{$_} = 1;
+	}
+    }
+
+    while(<>) {
+	chomp;
+	my $in_dist = $_;
+	my $long_dist = $in_dist;
+	my $cdi = CPAN::DistnameInfo->new($in_dist);
+	if (!(my $cpanid = $cdi->cpanid)) {
+	    # probably short dist name, try to create long one...
+	    if (my($author,$filename) = $in_dist =~ m{^([^/]+)/(.*)$}) {
+		$long_dist = substr($author,0,1)."/".substr($author,0,2)."/".$author."/".$filename;
+		$cdi = CPAN::DistnameInfo->new($long_dist);
+		if (!($cpanid = $cdi->cpanid)) {
+		    warn "Cannot parse '$in_dist' nor '$long_dist', skipping...\n";
+		    next;
+		}
+	    } else {
+		warn "Cannot parse '$in_dist' (probably author is missing?), skipping...\n";
+	    }
+	}
+	if ($problematic_dist{$long_dist}) {
+	    warn "Skipping dangerous distribution '$in_dist'...\n";
+	} else {
+	    print $in_dist, "\n";
+	}
+    }
+} elsif ($do_report) {
     for my $dist (@problematic) {
 	print "$dist\t" . join(", ", sort keys %{ $seen_dist{$dist} }) . "\n";
     }
