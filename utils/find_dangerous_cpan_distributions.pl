@@ -23,8 +23,9 @@ my $do_report;
 my $do_filter;
 GetOptions("packages=s" => \$packages_file,
 	   "filter" => \$do_filter,
+	   "report" => \$do_report,
 	  )
-    or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter]";
+    or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter] [-report]";
 
 my %resolved = ('CGI'  => ['3.33', '3.34'], # https://rt.cpan.org/Ticket/Display.html?id=48425 (not dangerous)
 		'Geo-Coder-US' => ['0.21'], # large changes in code base, removal of a module
