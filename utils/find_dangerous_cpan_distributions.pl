@@ -22,9 +22,11 @@ use CPAN::Version ();
 my $packages_file;# = "/usr/local/src/CPAN/sources/modules/02packages.details.txt.gz";
 my $do_report;
 my $do_filter;
+my $do_distropref;
 GetOptions("packages=s" => \$packages_file,
 	   "filter" => \$do_filter,
 	   "report" => \$do_report,
+	   "distropref" => \$do_distropref,
 	  )
     or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter] [-report]";
 
@@ -67,42 +69,68 @@ for my $dist (keys %seen_dist) {
     }
 }
 
-if ($do_filter) {
+if ($do_filter || $do_distropref) {
     # The newest one is not problematic:
     for my $dist (@problematic) {
 	my($newest) = sort { CPAN::Version->vcmp($b, $a) } keys %{ $seen_dist{$dist} };
 	delete $seen_dist{$dist}->{$newest};
     }
 
-    my %problematic_dist;
-    for my $dist (@problematic) {
-	for (values %{ $seen_dist{$dist} }) {
-	    $problematic_dist{$_} = 1;
-	}
-    }
-
-    while(<>) {
-	chomp;
-	my $in_dist = $_;
-	my $long_dist = $in_dist;
-	my $cdi = CPAN::DistnameInfo->new($in_dist);
-	if (!(my $cpanid = $cdi->cpanid)) {
-	    # probably short dist name, try to create long one...
-	    if (my($author,$filename) = $in_dist =~ m{^([^/]+)/(.*)$}) {
-		$long_dist = substr($author,0,1)."/".substr($author,0,2)."/".$author."/".$filename;
-		$cdi = CPAN::DistnameInfo->new($long_dist);
-		if (!($cpanid = $cdi->cpanid)) {
-		    warn "Cannot parse '$in_dist' nor '$long_dist', skipping...\n";
-		    next;
-		}
-	    } else {
-		warn "Cannot parse '$in_dist' (probably author is missing?), skipping...\n";
+    if ($do_distropref) {
+	print <<EOF;
+---
+comment: dangerous CPAN distributions which may cause downgrades, automatically created by $0
+disabled: 1
+match:
+  distribution: |-
+    ^(?x:
+EOF
+	my @problematic_dist;
+	for my $dist (@problematic) {
+	    while(my($ver, $dist_ver) = each %{ $seen_dist{$dist} }) {
+		# create short dist name
+		$dist_ver =~ s{^./../}{};
+		push @problematic_dist, $dist_ver;
 	    }
 	}
-	if ($problematic_dist{$long_dist}) {
-	    warn "Skipping dangerous distribution '$in_dist'...\n";
-	} else {
-	    print $in_dist, "\n";
+	@problematic_dist = sort @problematic_dist;
+	my $first = shift @problematic_dist;
+	print "      \\Q$first\\E\n";
+	for my $problematic_dist (@problematic_dist) {
+	    print "     |\\Q$problematic_dist\\E\n";
+	}
+	print "    )\$\n";
+    } else {
+	my %problematic_dist;
+	for my $dist (@problematic) {
+	    for (values %{ $seen_dist{$dist} }) {
+		$problematic_dist{$_} = 1;
+	    }
+	}
+
+	while(<>) {
+	    chomp;
+	    my $in_dist = $_;
+	    my $long_dist = $in_dist;
+	    my $cdi = CPAN::DistnameInfo->new($in_dist);
+	    if (!(my $cpanid = $cdi->cpanid)) {
+		# probably short dist name, try to create long one...
+		if (my($author,$filename) = $in_dist =~ m{^([^/]+)/(.*)$}) {
+		    $long_dist = substr($author,0,1)."/".substr($author,0,2)."/".$author."/".$filename;
+		    $cdi = CPAN::DistnameInfo->new($long_dist);
+		    if (!($cpanid = $cdi->cpanid)) {
+			warn "Cannot parse '$in_dist' nor '$long_dist', skipping...\n";
+			next;
+		    }
+		} else {
+		    warn "Cannot parse '$in_dist' (probably author is missing?), skipping...\n";
+		}
+	    }
+	    if ($problematic_dist{$long_dist}) {
+		warn "Skipping dangerous distribution '$in_dist'...\n";
+	    } else {
+		print $in_dist, "\n";
+	    }
 	}
     }
 } elsif ($do_report) {
