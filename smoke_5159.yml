@@ -1,0 +1,13 @@
+smoke:
+  testlabel: 5159
+  git_repository: /home/cpansand/work/perl
+  perl1:
+    commit: v5.14.2
+  perl2:
+    commit: d005e6a6a9ca86c3b2f1eaa7b931b085cf8a205b
+  modlist:
+# created using:
+#    ./utils/srezic-modlist.pl > /tmp/2005-2011.modlist3; chmod 644 /tmp/2005-2011.modlist3
+    file: /tmp/2005-2011.modlist3
+  options:
+    skiptested: 1
