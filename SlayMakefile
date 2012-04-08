@@ -124,7 +124,13 @@
 
 	sub cpan_smoke_modules_cmd {
 		my($args) = @_;
-		($^X, "./utils/cpan_smoke_modules", "-batch", "-forparallelsmoker", @$args);
+		my @cmd = ($^X, "./utils/cpan_smoke_modules", "-batch", "-forparallelsmoker", @$args);
+		# make sure distroprefs patches are not used, by using the
+		# PERL_TEST_UNPATCHED=1 convention. Note that some essential
+		# modules (with many dependencies) should probably be installed
+		# manually without this env variable
+		unshift @cmd, ('env', 'PERL_TEST_UNPATCHED=1');
+		@cmd;
 	}
 
 	sub cpan_smoke_modules {
