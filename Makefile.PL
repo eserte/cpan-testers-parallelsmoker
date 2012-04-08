@@ -23,5 +23,7 @@ WriteMakefile
       'CPANDB' => 0,
       # optional for comparing reports
       'Text::WordDiff' => 0,
+      # for create_modlist_by_years
+      'Parse::CPAN::Packages::Fast' => 0,
      }
     );
