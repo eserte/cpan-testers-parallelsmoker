@@ -251,12 +251,13 @@ sub parse_reports_sent { # takes ~3 seconds
     my %dist;
     my $cpan_reporter_dir = $ENV{PERL_CPAN_REPORTER_DIR} || "$ENV{HOME}/.cpanreporter";
     my $reports_sent_file = "$cpan_reporter_dir/reports-sent.db";
-    open my $fh, $reports_sent_file
-	or die "Can't open $reports_sent_file: $!";
-    while(<$fh>) {
-	next if /^#/;
-	chomp;
-	if (my($phase, $action, $dist, $perl, $arch) =
+    if (!open my $fh, $reports_sent_file) {
+	warn "Can't open $reports_sent_file: $!, skip this part...\n";
+    } else {
+	while(<$fh>) {
+	    next if /^#/;
+	    chomp;
+	    if (my($phase, $action, $dist, $perl, $arch) =
 		$_ =~ m{^
 			(\S+)\s+
 			(\S+)\s+
@@ -264,21 +265,22 @@ sub parse_reports_sent { # takes ~3 seconds
 			\(([^\)]+)\)\s+
 			(.+)
 			$}x) {
-	    my $d = CPAN::DistnameInfo->new($dist.".tar.gz");
-	    my $maturity = $d->maturity;
-	    if (my $old_d = $dist{$maturity}->{$d->dist}->{$perl}->{$arch}) {
-		if (safe_version($d->version) < safe_version($old_d->{dist}->version)) {
-		    next;
-		} elsif (safe_version($d->version) == safe_version($old_d->{dist}->version)) {
-		    $dist{$maturity}->{$d->dist}->{$perl}->{$arch}->{result} .= ", $phase $action";
-		    next;
+		my $d = CPAN::DistnameInfo->new($dist.".tar.gz");
+		my $maturity = $d->maturity;
+		if (my $old_d = $dist{$maturity}->{$d->dist}->{$perl}->{$arch}) {
+		    if (safe_version($d->version) < safe_version($old_d->{dist}->version)) {
+			next;
+		    } elsif (safe_version($d->version) == safe_version($old_d->{dist}->version)) {
+			$dist{$maturity}->{$d->dist}->{$perl}->{$arch}->{result} .= ", $phase $action";
+			next;
+		    }
 		}
+		$dist{$maturity}->{$d->dist}->{$perl}->{$arch} = {dist => $d,
+								  result => "$phase $action",
+								 };
+	    } else {
+		warn "Cannot parse line $_";
 	    }
-	    $dist{$maturity}->{$d->dist}->{$perl}->{$arch} = {dist => $d,
-							      result => "$phase $action",
-							     };
-	} else {
-	    warn "Cannot parse line $_";
 	}
     }
     \%dist;
