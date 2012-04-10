@@ -139,6 +139,30 @@
 		system(@cmd);
 		die "Command failed '@cmd': $?" if $? != 0;
 	}
+
+	sub _print_auto_move_rules {
+		my($reportsdir) = @_;
+		print qq{    mv -v `fgrep -l " Failed test 'Pod coverage on " $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "defined(\%hash) is deprecated at" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "defined(\@array) is deprecated at" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Do you need to predeclare Carp::croak?" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Do you need to predeclare croak?" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "UNIVERSAL->import is deprecated and will be removed in a future perl at" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Not in MANIFEST: MYMETA.yml" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Error:  Can't locate " $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `grep -l "Can't locate .* in \@INC " $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `grep -l 'Error:  Base class package ".*" is empty.' $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Failed test 'Test::Perl::Critic for " $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l '# Operation "eq": no method found,' $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l '^* matches null string many times in regex; marked by' $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l 'DBD::SQLite::db prepare failed: database is locked at ' $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "This Perl not built to support threads" $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Failed test 'POD test for " $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l "Failed test 'POD spelling for " $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l '/usr/lib/libpthread.so.2: Undefined symbol "__malloc_lock" at ' $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l 'There is no form named "' $reportsdir/fail.*` $reportsdir/sync/\n};
+		print qq{    mv -v `fgrep -l 'Error GETing http://' $reportsdir/fail.*` $reportsdir/sync/\n};
+	}
 }
 
 all:	pre-checks download-perl extract-perl build-perl install-perl prepare-smoker-modules prepare-smoker-config create-modlist install-mod start-smoking
@@ -164,6 +188,9 @@ tools-old:
 		my $old_reportsdir = $CONFIG->{perl1}->{reportsdir};
 		print "*** Check and send good reports forever:\n";
 		print qq{    forever -60 'echo "**** WORKING for old perl ****"; sleep 1; ctr_good_or_invalid.pl -good $old_reportsdir/ ; perl5.12.0 -S send_tr_reports.pl $old_reportsdir/ ; echo "**** FINISHED for old perl ****"'\n};
+		print "*** Some auto-move rules:\n";
+		_print_auto_move_rules($old_reportsdir);
+		"";
 	}
 
 tools-new:
@@ -174,26 +201,8 @@ tools-new:
 		print "*** Check and send good reports forever:\n";
 		print qq{    forever -60 'echo "**** WORKING for new perl ****"; sleep 1; ctr_good_or_invalid.pl -good $new_reportsdir/ ; perl5.12.0 -S send_tr_reports.pl $new_reportsdir/ ; echo "**** FINISHED for new perl ****"'\n};
 		print "*** Some auto-move rules:\n";
-		print qq{    mv -v `fgrep -l " Failed test 'Pod coverage on " $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "defined(\%hash) is deprecated at" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "defined(\@array) is deprecated at" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Do you need to predeclare Carp::croak?" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Do you need to predeclare croak?" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "UNIVERSAL->import is deprecated and will be removed in a future perl at" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Not in MANIFEST: MYMETA.yml" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Error:  Can't locate " $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `grep -l "Can't locate .* in \@INC " $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `grep -l 'Error:  Base class package ".*" is empty.' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Failed test 'Test::Perl::Critic for " $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l '# Operation "eq": no method found,' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l '^* matches null string many times in regex; marked by' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l 'DBD::SQLite::db prepare failed: database is locked at ' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "This Perl not built to support threads" $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Failed test 'POD test for " $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l "Failed test 'POD spelling for " $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l '/usr/lib/libpthread.so.2: Undefined symbol "__malloc_lock" at ' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l 'There is no form named "' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
-		print qq{    mv -v `fgrep -l 'Error GETing http://' $new_reportsdir/fail.*` $new_reportsdir/sync/\n};
+		_print_auto_move_rules($new_reportsdir);
+		"";
 	}
 
 dump-config:
