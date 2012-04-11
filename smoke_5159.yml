@@ -8,6 +8,8 @@ smoke:
   modlist:
 # created using:
 #    ./utils/srezic-modlist.pl > /tmp/2005-2011.modlist3; chmod 644 /tmp/2005-2011.modlist3
-    file: /tmp/2005-2011.modlist3
+#    file: /tmp/2005-2011.modlist3
+# 2nd pass, only 2012:
+    file: /tmp/2012.modlist
   options:
     skiptested: 1
