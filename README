@@ -14,10 +14,12 @@ Installation
 ------------
 
 Currently it's not proposed to install this distribution the usual
-way. Just fetch all the prerequisites mentioned in the Makefile.PL
-(easiest to be done with "cpan -t ."). Note that not all prerequisites
-are strictly needed for the parallel smoker; some are just for
-analyzing utilities.
+way. Just fetch all the prerequisites mentioned in the Makefile.PL.
+Note that not all prerequisites are strictly needed for the parallel
+smoker; some are just for analyzing utilities.
+
+Make sure that CPAN.pm is configured and the indexes are loaded (at
+least call once "reload index" in the CPAN shell).
 
 Writing the configuration file
 ------------------------------
