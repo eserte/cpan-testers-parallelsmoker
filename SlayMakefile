@@ -408,3 +408,8 @@ cmp-ct-history:
 			or die "@cmd failed: $?";
 		"";
 	}
+
+count-reports:
+	{
+		system "wc", "-l", map { "$_/cpanreporter/reports-sent.db" } $CONFIG->{perl1}->{configdir}, $CONFIG->{perl2}->{configdir};
+	}
