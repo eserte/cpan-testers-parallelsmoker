@@ -1,0 +1,15 @@
+smoke:
+  testlabel: 5159linux
+  run_in: screen
+  git_repository: /home/eserte/work/perl
+  perl1:
+    commit: v5.14.2
+  perl2:
+    commit: v5.15.9-123-gbd9cbc4
+  modlist:
+# created using:
+#    ./utils/create_modlist_by_years.pl  -years 2005.. >| /tmp/modlist-2005-now.list -perl /usr/bin/perl
+#    file: /tmp/modlist-2005-now.list
+    file: /tmp/2nd.modlist
+  options:
+    skiptested: 1
