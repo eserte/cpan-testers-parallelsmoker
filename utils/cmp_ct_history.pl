@@ -46,7 +46,7 @@ GetOptions("missing!"     => \$show_missing,
 	   "defaultorg!"  => \$use_default_org_file,
 	   "config=s"     => \$smoke_config_file,
 	  )
-    or die "usage: $0 [-missing] [-fulldist] [-minimal [-minimal]] -config file | newhistory oldhistory";
+    or die "usage: $0 [-missing] [-fulldist] [-minimal [-minimal]] [-defaultorg|-org ...] -config file | newhistory oldhistory";
 
 my($hist1, $hist2);
 if ($smoke_config_file) {
