@@ -56,6 +56,8 @@ if ($smoke_config_file) {
     CPAN::Testers::ParallelSmoker::expand_config();
     $hist2 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl1}->{configdir} . '/cpanreporter/reports-sent.db';
     $hist1 = $CPAN::Testers::ParallelSmoker::CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db';
+    -e $hist2 or die "Right history file $hist2 does not exist";
+    -e $hist1 or die "Left history file $hist1 does not exist";
     -r $hist2 or die "Right history file $hist2 not readable";
     -r $hist1 or die "Left history file $hist2 not readable";
     if ($use_default_org_file) {
