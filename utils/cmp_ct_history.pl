@@ -201,6 +201,7 @@ sub read_org_file {
 	    if (m{(
 		      http.*?rt.cpan.org\S+Display.html\?id=\d+
 		  |   http.*?rt.perl.org\S+Display.html\?id=\d+
+		  |   https://github.com/.*/.*/issues/\d+
 		  )}x) {
 		if ($current_section_is_fixed_or_redo) {
 		    next;
