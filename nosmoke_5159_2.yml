@@ -1,0 +1,12 @@
+# This is not used for smoking, but just for some quick checks
+smoke:
+  testlabel: 5159_2
+  git_repository: /home/cpansand/work/perl
+  perl1:
+    commit: v5.14.2
+  perl2:
+    commit: v5.15.9-134-g8aed2c6
+  modlist:
+    file: /tmp/mods
+  options:
+    skiptested: 1
