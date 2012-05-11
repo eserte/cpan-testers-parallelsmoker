@@ -199,8 +199,10 @@ tools-new:
 		my $new_reportsdir = $CONFIG->{perl2}->{reportsdir};
 		print "*** Mark FAIL reports as good:\n";
 		print "    /home/e/eserte/devel/ctr_good_or_invalid.pl -geometry 600x900+0+0 -quit-at-end $new_reportsdir &\n";
-		print "*** Check and send good reports forever:\n";
+		print "*** Check and send good reports forever (conservative):\n";
 		print qq{    forever -60 'echo "**** WORKING for new perl ****"; sleep 1; ctr_good_or_invalid.pl -good $new_reportsdir/ ; perl5.12.0 -S send_tr_reports.pl $new_reportsdir/ ; echo "**** FINISHED for new perl ****"'\n};
+		print "*** Check and send good reports forever (fancy):\n";
+		print qq{    forever -countdown -60 'echo "**** WORKING for new perl ****"; sleep 1; ctr_good_or_invalid.pl -auto-good -xterm-title $new_reportsdir/ ; perl5.12.0 -S send_tr_reports.pl $new_reportsdir/ ; echo "**** FINISHED for new perl ****"'\n};
 		print "*** Some auto-move rules:\n";
 		_print_auto_move_rules($new_reportsdir);
 		"";
