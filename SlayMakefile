@@ -179,6 +179,8 @@ help:
 tools-both:
 	{
 		print "*** Compare reports:\n";
+		print "    ./utils/cmp_ct_history.pl -config $CONFIG_FILE -defaultorg\n";
+		print "*** Compare reports (alternative, without smoke.txt):\n";
 		print "    ./utils/cmp_ct_history.pl $CONFIG->{perl2}->{configdir}/cpanreporter/reports-sent.db $CONFIG->{perl1}->{configdir}/cpanreporter/reports-sent.db -min -min -min -fulldist\n";
 		print "*** Run tests for some modules manually :\n";
 		print "    ./utils/cpan_smoke_modules -perl " . $CONFIG->{perl2}->{installdir} . "/bin/perl -perl " . $CONFIG->{perl1}->{installdir} . "/bin/perl -install\n";
@@ -401,7 +403,6 @@ xxx-interactive-stuff:
 
 cmp-ct-history:
 	{
-		# XXX cmp_ct_history.pl should be in utils!
 		my @cmd = ($^X,
 			   "./utils/cmp_ct_history.pl",
 		           $CONFIG->{perl2}->{configdir} . '/cpanreporter/reports-sent.db',
