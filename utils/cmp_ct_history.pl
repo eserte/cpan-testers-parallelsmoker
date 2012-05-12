@@ -2,10 +2,9 @@
 # -*- perl -*-
 
 #
-# $Id: cmp_ct_history.pl,v 1.8 2010/05/26 19:25:58 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2008 Slaven Rezic. All rights reserved.
+# Copyright (C) 2008-2012 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -38,12 +37,14 @@ my $show_fulldist;
 my $show_minimal;
 my $org_file;
 my $use_default_org_file;
+my $do_dump_org_file;
 my $smoke_config_file;
 GetOptions("missing!"     => \$show_missing,
 	   "fulldist!"    => \$show_fulldist,
 	   "minimal|min+" => \$show_minimal,
 	   "org=s"        => \$org_file,
 	   "defaultorg!"  => \$use_default_org_file,
+	   "dumporg"      => \$do_dump_org_file,
 	   "config=s"     => \$smoke_config_file,
 	  )
     or die "usage: $0 [-missing] [-fulldist] [-minimal [-minimal]] [-defaultorg|-org ...] -config file | newhistory oldhistory";
@@ -66,6 +67,9 @@ if ($smoke_config_file) {
 } else {
     $hist1 = shift or die "left history (usually the history with the *newer* system)?";
     $hist2 = shift or die "right history (usually the history with the *older* system)?";
+    if ($use_default_org_file) {
+	die "Cannot use -defaultorg without -config, please specify -org /path/to/smoke.txt instead\n";
+    }
 }
 
 my $dist2rt;
@@ -214,10 +218,16 @@ sub read_org_file {
 	    }
 	}
     }
-    (dist2rt    => \%dist2rt,
-     dist2fixed => \%dist2fixed,
-     dist2ignore => \%dist2ignore,
-    );
+    my %res = (dist2rt    => \%dist2rt,
+	       dist2fixed => \%dist2fixed,
+	       dist2ignore => \%dist2ignore,
+	      );
+    if ($do_dump_org_file) {
+	require Data::Dumper;
+	print Data::Dumper::Dumper(\%res);
+	exit 0;
+    }
+    %res;
 }
  
 __END__
