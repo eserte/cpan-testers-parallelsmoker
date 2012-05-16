@@ -62,7 +62,12 @@ if ($smoke_config_file) {
     -r $hist2 or die "Right history file $hist2 not readable";
     -r $hist1 or die "Left history file $hist2 not readable";
     if ($use_default_org_file) {
-	$org_file = $CPAN::Testers::ParallelSmoker::CONFIG->{smokerdir} . '/smoke.txt';
+	my $_org_file = $CPAN::Testers::ParallelSmoker::CONFIG->{smokerdir} . '/smoke_' . $CPAN::Testers::ParallelSmoker::CONFIG->{testlabel} . '.txt';
+	if (-e $_org_file) {
+	    $org_file = $_org_file;
+	} else {
+	    $org_file = $CPAN::Testers::ParallelSmoker::CONFIG->{smokerdir} . '/smoke.txt';
+	}
     }
 } else {
     $hist1 = shift or die "left history (usually the history with the *newer* system)?";
