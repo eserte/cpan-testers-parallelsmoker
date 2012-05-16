@@ -1,0 +1,14 @@
+smoke:
+  git_repository: /home/cpansand/work/perl
+  run_in: screen
+  git_repository: /home/eserte/work/perl
+  perl1:
+    commit: v5.14.1
+  perl2:
+    commit: v5.14.1
+  mod2:
+    url: M/MS/MSCHWERN/Test-Simple-1.005000_005.tar.gz
+  modlist:
+    file: /tmp/2005-2012-testmore.modlist
+  options:
+    skiptested: 1
