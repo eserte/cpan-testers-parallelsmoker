@@ -347,11 +347,13 @@ install-mod:
 				     ['perl1', 'mod1'],
 				    ) {
 				my($key, $modkey) = @$def;
-				my $url = $CONFIG->{$modkey}->{url};
-				die "No url set in mod1/mod2" if !$url;
-				cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
-						    "-nosignalend",
-						    "-install", $url]);
+				if (exists $CONFIG->{$modkey}) {
+					my $url = $CONFIG->{$modkey}->{url};
+					die "No url set in mod1/mod2" if !$url;
+					cpan_smoke_modules(["-perl", $CONFIG->{$key}->{installdir} . "/bin/perl",
+							    "-nosignalend",
+							    "-install", $url]);
+				}
 			}
 		}
 	}

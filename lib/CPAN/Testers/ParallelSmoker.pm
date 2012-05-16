@@ -116,7 +116,7 @@ sub expand_config () {
 	}
     }
 
-    $CONFIG->{want_mod_comparison} = (exists $CONFIG->{mod1} && exists $CONFIG->{mod2});
+    $CONFIG->{want_mod_comparison} = (exists $CONFIG->{mod1} || exists $CONFIG->{mod2});
     $CONFIG->{run_in} ||= 'xterm';
     for my $key (qw(perl1 perl2)) {
 	$CONFIG->{$key}->{extract_from_git} = $CONFIG->{$key}->{commit};
