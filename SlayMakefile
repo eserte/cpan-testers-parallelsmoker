@@ -212,6 +212,24 @@ tools-new:
 		"";
 	}
 
+sync-remote-reports-new:
+	{
+		my $reportsdir_dir = dirname $CONFIG->{perl2}->{reportsdir};
+		my $reportsdir_base = basename $CONFIG->{perl2}->{reportsdir};
+		my $cmd = "cd $reportsdir_dir && mv -v $reportsdir_base/*.rpt $reportsdir_base/sync/ && rsync -av $reportsdir_base/sync/*.rpt \$REMREPHOST:var/remote-reps-$CONFIG->{testlabel}/new/ && mv -v $reportsdir_base/sync/*.rpt $reportsdir_base/done/";
+		print "$cmd\n";
+	}
+
+sync-remote-reports-old:
+	{
+		my $reportsdir_dir = dirname $CONFIG->{perl1}->{reportsdir};
+		my $reportsdir_base = basename $CONFIG->{perl1}->{reportsdir};
+		my $cmd = "cd $reportsdir_dir && mv -v $reportsdir_base/*.rpt $reportsdir_base/sync/ && rsync -av $reportsdir_base/sync/*.rpt \$REMREPHOST:var/remote-reps-$CONFIG->{testlabel}/new/ && mv -v $reportsdir_base/sync/*.rpt $reportsdir_base/done/";
+		print "$cmd\n";
+	}
+
+sync-remote-reports-both: sync-remote-reports-new sync-remote-reports-old
+
 dump-config:
 	{
 		require Data::Dumper;
