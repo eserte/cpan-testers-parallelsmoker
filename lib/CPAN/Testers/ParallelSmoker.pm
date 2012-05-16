@@ -22,6 +22,7 @@ our($CONFIG, $OPTIONS, $HOME);
 
 our @EXPORT = qw(load_config expand_config set_home $CONFIG $OPTIONS);
 
+use Cwd qw(realpath);
 use File::Basename qw(basename);
 use Hash::Util qw();
 use YAML::Syck qw(LoadFile);
@@ -29,6 +30,8 @@ use YAML::Syck qw(LoadFile);
 sub load_config ($) {
     my $config_file = shift;
     $CONFIG = (LoadFile $config_file)->{smoke};
+    $CONFIG->{configfile} = realpath $config_file;
+    $CONFIG;
 }
 
 sub set_home ($) {
@@ -38,7 +41,16 @@ sub set_home ($) {
 sub expand_config () {
     set_home $ENV{HOME} if !defined $HOME;
     die "Config not available, maybe you have to call load_config first?" if !$CONFIG;
-    die "testlabel is missing" if !$CONFIG->{testlabel};
+    if (!$CONFIG->{testlabel}) {
+	if (!$CONFIG->{configfile}) {
+	    die "testlabel is missing and cannot be deduced from configfile";
+	}
+	my $configbase = basename $CONFIG->{configfile};
+	if ($configbase !~ m{^smoke_(.+)\.ya?ml$}) {
+	    die 'Config filename does not match /smoke_.*\.ya?ml/, cannot deduce testlabel from it. Please set testlabel explicitely.';
+	}
+	$CONFIG->{testlabel} = $1;
+    }
     $CONFIG->{testlabel} =~ m{^[a-zA-Z0-9_.-]+$} or die "Illegal letters found in testlabel, try alphanumerics and . - _";
 
     $CONFIG->{smokerdir} = "$HOME/var/ctps/$CONFIG->{testlabel}";
