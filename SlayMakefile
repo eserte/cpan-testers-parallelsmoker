@@ -1,8 +1,10 @@
 {
 	use vars qw($CONFIG $CONFIG_FILE $OPTIONS);
 	use File::Basename qw(basename dirname);
+	use File::Compare qw();
 	use File::Path qw(mkpath);
 	use File::Temp qw(tempdir);
+	use POSIX qw(strftime);
 
 	use Cwd qw(cwd);
 	use lib cwd . "/lib"; # XXX suboptimal, does not work if cwd is somewhere else
@@ -314,21 +316,27 @@ prepare-smoker-config:
 create-modlist:
 	{
 		my $modlist = $CONFIG->{smokerdir} . '/config/modlist';
+		my $tmp_modlist = "$modlist~";
 		if ($CONFIG->{modlist}->{dependants}) {
-			my $cmd = "$^X ./utils/find_dependants.pl $CONFIG->{modlist}->{dependants} > $modlist";
+			my $cmd = "$^X ./utils/find_dependants.pl $CONFIG->{modlist}->{dependants} > $tmp_modlist";
 			system($cmd);
 			die "Command '$cmd' failed: $?" if $? != 0;
 		} elsif ($CONFIG->{modlist}->{file}) {
-			my @cmd = ("cp", $CONFIG->{modlist}->{file}, $modlist);
+			my @cmd = ("cp", $CONFIG->{modlist}->{file}, $tmp_modlist);
 			system @cmd; # XXX should use File::Copy
 			die "Command '@cmd' failed" if $? != 0;
 		} elsif ($CONFIG->{modlist}->{command}) {
-			my $cmd = "$CONFIG->{modlist}->{command} > $modlist~";
+			my $cmd = "$CONFIG->{modlist}->{command} > $tmp_modlist";
 			system $cmd;
 			die "Command '$cmd' failed" if $? != 0;
-			rename "$modlist~", $modlist
-				or die "Renaming $modlist~ to $modlist failed: $!";
 		}
+		if (-e $modlist && File::Compare::compare($modlist, $tmp_modlist) != 0) {
+			my $modlist_backup = strftime("%Y%m%d%H%M%S", localtime);
+			rename $modlist, $modlist_backup
+				or warn "Cannot create backup of $modlist: $!";
+		}
+		rename $tmp_modlist, $modlist
+			or die "Renaming $tmp_modlist to $modlist failed: $!";
 	}
 
 install-mod:
