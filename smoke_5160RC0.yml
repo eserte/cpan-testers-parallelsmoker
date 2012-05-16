@@ -1,5 +1,5 @@
 smoke:
-  testlabel: 5160RC0
+#  testlabel: 5160RC0
   git_repository: /home/cpansand/work/perl
   perl1:
     commit: v5.14.2
@@ -8,6 +8,7 @@ smoke:
   modlist:
 # created using:
 #    ./utils/srezic-modlist.pl > /tmp/2005-2012.modlist; chmod 644 /tmp/2005-2012.modlist
-    file: /tmp/2005-2012.modlist
+#    file: /tmp/2005-2012.modlist
+    file: /tmp/modlist2
   options:
     skiptested: 1
