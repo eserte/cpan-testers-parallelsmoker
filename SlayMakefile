@@ -39,7 +39,17 @@
 		save_pwd {
 			chdir $CONFIG->{downloaddir} or die $!;
 			if (!-s $destfile) {
-				system("wget", $url);
+				if ($url =~ m{^file://(.*)}) {
+					my $localfile = $1;
+					if (-e $localfile) {
+						symlink $localfile, $destfile
+							or die "Cannot symlink $localfile -> $destfile: $!";
+					} else {
+						die "The local file $localfile does not exist";
+					}
+				} else {
+					system("wget", $url);
+				}
 			} else {
 				print STDERR "INFO: $url already available as $destfile.\n";
 			}
