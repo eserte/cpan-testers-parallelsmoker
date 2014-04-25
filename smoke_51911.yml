@@ -1,0 +1,11 @@
+smoke:
+  perl1:
+    url: file:///usr/ports/distfiles/perl-5.18.2.tar.gz
+  perl2:
+    url: file:///usr/ports/distfiles/perl-5.19.11.tar.gz
+  modlist:
+# created on cvrsnica using:
+#    ./create_modlist_by_years.pl -years 2005.. -perl /usr/perl5.18.2/bin/perl > ~/modlist-2005-2014
+    file: /home/eserte/modlist-2005-2014
+  options:
+    skiptested: 1
