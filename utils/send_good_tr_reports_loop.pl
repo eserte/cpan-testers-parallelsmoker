@@ -24,7 +24,9 @@ set_home $home;
 expand_config;
 
 my($ctr_good_or_invalid_script) =
-    grep { -x $_ } ("$ENV{HOME}/work/srezic-misc/scripts/ctr_good_or_invalid.pl",
+    grep { -x $_ } (
+		    "$ENV{HOME}/src/srezic-misc/scripts/ctr_good_or_invalid.pl",
+		    "$ENV{HOME}/work/srezic-misc/scripts/ctr_good_or_invalid.pl",
 		    "$ENV{HOME}/work2/srezic-misc/scripts/ctr_good_or_invalid.pl",
 		    "/home/e/eserte/work/srezic-misc/scripts/ctr_good_or_invalid.pl",
 		    "/home/slavenr/work2/srezic-misc/scripts/ctr_good_or_invalid.pl",
@@ -33,7 +35,9 @@ die "Cannot find ctr_good_or_invalid.pl script"
     if !$ctr_good_or_invalid_script;
 
 my($send_tr_reports_script) =
-    grep { -x $_ } ("$ENV{HOME}/work/srezic-misc/scripts/send_tr_reports.pl",
+    grep { -x $_ } (
+		    "$ENV{HOME}/src/srezic-misc/scripts/send_tr_reports.pl",
+		    "$ENV{HOME}/work/srezic-misc/scripts/send_tr_reports.pl",
 		    "$ENV{HOME}/work2/srezic-misc/scripts/send_tr_reports.pl",
 		    "/home/e/eserte/work/srezic-misc/scripts/send_tr_reports.pl",
 		    "/home/slavenr/work2/srezic-misc/scripts/send_tr_reports.pl",
@@ -46,7 +50,7 @@ while() {
     sleep 1;
     for my $key ("perl1", "perl2") {
 	{
-	    my @cmd = ($^X, $ctr_good_or_invalid_script, "-good", 
+	    my @cmd = ($^X, $ctr_good_or_invalid_script, "-good", "-nocheck-screensaver", "-noxterm-title",
 		       $CONFIG->{$key}->{reportsdir});
 	    unshift @cmd, "echo" if !$doit;
 	    warn "  @cmd ...\n" if $v;
@@ -64,5 +68,9 @@ while() {
 	}
     }
     warn "**** FINISHED ****\n";
-    sleep 60;
+    for (reverse(1..60)) {
+        printf STDERR "\rSleep %d second(s)... ", $_;
+	sleep 1;
+    }
+    print STDERR "\n";
 }
