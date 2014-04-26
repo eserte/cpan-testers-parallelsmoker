@@ -1,0 +1,1322 @@
+#!/usr/bin/perl -w
+# -*- perl -*-
+
+#
+# $Id: cpan_smoke_modules,v 1.117 2012/03/22 21:49:42 eserte Exp $
+# Author: Slaven Rezic
+#
+# Copyright (C) 2007, 2008, 2009, 2011, 2012 Slaven Rezic. All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+#
+# Mail: slaven@rezic.de
+# WWW:  http://www.rezic.de/eserte/
+#
+
+use strict;
+use FindBin;
+use Config qw(%Config);
+use Getopt::Long;
+use CPAN;
+use CPAN::DistnameInfo 0.10; # .tar.bz2 support, TRIAL support
+use IO::Handle;
+use Sys::Hostname qw(hostname);
+use File::Temp qw(tempfile);
+use File::Path qw(mkpath);
+
+sub save_pwd (&);
+
+$ENV{PATH} = $ENV{PATH} . $Config{path_sep} . $FindBin::RealBin;
+
+my $start_time = time;
+
+my $addarch = $Config{myarchname} ? "_$Config{myarchname}" : "";
+my $cpan_smoke_last = "$ENV{HOME}/.cpan_smoke_modules$addarch.last";
+my $cpan_smoke_log  = "$ENV{HOME}/.cpan_smoke_modules$addarch.log";
+
+## XXX hardcoded list for biokovo XXX
+## -> now generated dynamically, see below
+#my @all_perls = 
+#    (
+#     #'/usr/perl5.004_04/bin/perl5.00404',
+#     #'/usr/perl5.005_03d/bin/perl5.00503',
+#     #'/usr/perl5.005_05/bin/perl5.00505',
+#     #'/usr/perl5.6.0/bin/perl5.6.0',
+#     #'/usr/perl5.6.1/bin/perl5.6.1',
+#     #'/usr/perl5.6.1d/bin/perl5.6.1',
+#     #'/usr/perl5.6.2/bin/perl5.6.2',
+#     #'/usr/perl5.6.2d/bin/perl5.6.2',
+#     #'/usr/perl5.8.0/bin/perl5.8.0',
+#     #'/usr/perl5.8.0d/bin/perl5.8.0',
+#     #'/usr/perl5.8.1/bin/perl5.8.1',
+#     #'/usr/perl5.8.1d/bin/perl5.8.1',
+#     #'/usr/perl5.8.2d/bin/perl5.8.2',
+#     #'/usr/perl5.8.3/bin/perl5.8.3',
+#     #'/usr/perl5.8.3d/bin/perl5.8.3',
+#     #'/usr/perl5.8.4/bin/perl5.8.4',
+#     #'/usr/perl5.8.5d/bin/perl5.8.5',
+#     #'/usr/perl5.8.6/bin/perl5.8.6',
+#     #'/usr/perl5.8.7/bin/perl5.8.7',
+#     #'/usr/perl5.8.8/bin/perl5.8.8',
+#     #'/usr/perl5.8.8d/bin/perl5.8.8',
+#     '/usr/perl5.8.9/bin/perl5.8.9',
+#     #'/usr/perl5.9.0/bin/perl5.9.0',
+#     #'/usr/perl5.9.0d/bin/perl5.9.0',
+#     #'/usr/perl5.9.4/bin/perl5.9.4',
+#     #'/usr/perl5.9.5/bin/perl5.9.5',
+#     #'/usr/perl5.9.5d/bin/perl5.9.5',
+#     #'/usr/perl5.10.0/bin/perl5.10.0', # XXX metabase not installed
+#     #'/usr/perl5.10.0d/bin/perl5.10.0',
+#     '/usr/perl5.10.1/bin/perl5.10.1',
+#     #'/usr/perl5.11.0/bin/perl5.11.0',
+#     #'/usr/perl5.11.0d/bin/perl5.11.0',
+#     #'/usr/perl5.11.4/bin/perl5.11.4',
+#     #'/usr/perl5.11.5/bin/perl5.11.5',
+#     '/usr/perl5.12.0/bin/perl5.12.0',
+#     #'/usr/perl5.12.0t/bin/perl5.12.0', # XXX metabase not installed
+#     '/usr/perl5.12.3/bin/perl5.12.3',
+#     #'/usr/perl5.13.9/bin/perl5.13.9',
+#     '/usr/perl5.15.9/bin/perl5.15.9',
+#    );
+
+# No need to blacklist users anymore --- no mails are sent directly anymore.
+my @blacklist_author; # = qw(MLEHMANN PJFL);
+my @perls;
+my $dists;
+my $reports_sent_seek_pos;
+my @pv;
+my $do_action = "test"; # and report
+my $warntimeout = 60;
+my $n;
+my $r;
+my $rr; # reverse a working set (-splitdists) only
+my $use_sqlite = 0; # not default anymore --- sometimes there are locking problems
+$use_sqlite = 1 if hostname =~ m{^mom}; # known slow machine XXX -> should go to some config file
+my $fl;
+my $do_continue;
+my $do_recent;
+#my $recent_url = 'ftp://ftp.funet.fi/pub/CPAN/authors/id/RECENT-2d.yaml'; # XXX should match the first entry in urllist!
+#my $recent_url = 'ftp://ftp.funet.fi/pub/CPAN/authors/TESTPLEASEIGNORE-1W.yaml'; # XXX
+my $recent_url = 'ftp://ftp.funet.fi/pub/CPAN/authors/RECENT-6h.yaml'; # XXX should match the first entry in urllist!
+my $interactive;
+my $wait;
+my $batch = 1;
+my $for_parallel_smoker = 0;
+my $all_perls = 1; # Usually I want them all
+my $build_dir_reuse = 0; # not default - startup is tooo slow
+my $split_dists = $^O eq 'MSWin32' ? 5 : 50;
+my $has_xterm_conf;
+my $skip_tested;
+my $skip_tested_nondiscarded;
+my $no_fail_reports;
+my $save_reports;
+my $min_build_dir_avail = 2_000_000_000; # 2G
+my $min_tmp_dir_avail   =    50_000_000; # 50M
+my $bleeding_edge;
+my $debug;
+my $destroy_perl_in_path = 0; # $^O ne 'MSWin32';
+my @pre_dist_or_mods;
+my @cpan_conf;
+my $strace;
+my $truss;
+my $ktrace;
+my $use_distroprefs = 1;
+my $prefs_dir;
+my $signal_end = 1;
+my $module_printused;
+my $unkind = 0;
+Getopt::Long::Configure('noauto_abbrev');
+GetOptions("n" => \$n,
+	   "r|reverse" => \$r,
+	   "rr" => \$rr,
+	   "a|allperls!" => \$all_perls,
+	   "i|install" => sub { $do_action = "install" },
+	   "shell" => sub {
+	       $do_action = "shell";
+	       $signal_end = 0; # we are interactive anyway...
+	   },
+	   "warntimeout=i" => \$warntimeout,
+	   'perl=s@' => \@perls,
+	   'pv=s@' => \@pv,
+	   'sqlite!' => \$use_sqlite,
+	   'fl|filelist=s' => \$fl,
+	   'c|cont|continue' => \$do_continue,
+	   'recent' => \$do_recent,
+	   'recenturl=s' => \$recent_url,
+	   'interactive!' => \$interactive,
+	   'unkind' => \$unkind,
+	   'wait!' => \$wait,
+	   'batch!' => \$batch,
+	   'forparallelsmoker!' => \$for_parallel_smoker,
+	   'builddirreuse!' => \$build_dir_reuse,
+	   'splitdists=i' => \$split_dists,
+	   'skiptested!' => \$skip_tested,
+	   'skipndtested!' => sub {
+	       $skip_tested = 1;
+	       $skip_tested_nondiscarded = 1;
+	   },
+	   'nofailreport' => \$no_fail_reports,
+	   'savereports!' => \$save_reports,
+	   'bleededge|bleedingedge!' => \$bleeding_edge,
+	   'debug!' => \$debug,
+	   'pre=s@' => \@pre_dist_or_mods,
+	   'cpanconf=s@' => \@cpan_conf,
+	   'destroyperl!' => \$destroy_perl_in_path,
+	   'strace=s' => \$strace,
+	   'truss=s' => \$truss,
+	   'ktrace=s' => \$ktrace,
+	   'distroprefs!' => \$use_distroprefs,
+	   'prefsdir=s' => \$prefs_dir,
+	   'signalend!' => \$signal_end,
+	   'moduleprintused|module-printused!' => \$module_printused,
+	   'minbuilddiravail=i' => \$min_build_dir_avail,
+	  )
+    or die <<EOF;
+usage: $0
+     [-i|-install] [-shell]
+     [-a|-allperls] [-perl /path/to/perl [-perl ...]] [-pv x.y.z,x.y.z,....]
+     [-fl|-filelist file] [-c|-cont|-continue] [-recent] [-recenturl url]
+     [-r|-reverse] [-rr] [-splitdists number]
+     [-[no]skiptested] [-nofailreport]
+     [-[no]bleededge|bleedingedge]
+     [-warntimeout secs] [-[no]sqllite]
+     [-[no]interactive] [-[no]wait] [-[no]batch]
+     [-[no]builddirreuse]
+     [-n] [-[no]debug]
+     [-pre dist/module [...]]
+     [-cpanconf key=value [-cpanconf ...]]
+     [-[no]destroyperl]
+     [-strace|-truss|-ktrace file]
+     [-[no]signalend] [-moduleprintused]
+     [-[no]distroprefs] [-prefsdir ...]
+     [dist ...]
+
+-i: test and install
+-shell: just start the CPAN shell with the special smoker settings
+
+-a: use all installed perls (otherwise some perls will not be used)
+-perl path: use the named perl
+-pv x.y.z: use the perl named by version number
+
+-pre dist/module: module or distribution which should be tested before all others
+-fl file: file with distributions to test
+-c: ???
+-recent: test recent distributions
+-recenturl url: URL to get list of recent distributions
+
+-r:  reverse the list of tested distribution
+-rr: reverse just a smaller working set (to be used with -splitdists)
+-splitdists number: test at most number distribution within one iteration (default $split_dists)
+-skiptested: skip already tested distributions (use ~/.cpanreporter/reports-sent.db list)
+-nofailreport: send only PASS/NA/UNKNOWN reports, no FAIL reports
+
+-warntimeout secs: warn after inactivity (needs idletermchecker program, default $warntimeout)
+-[no]sqllite: (do not) use CPAN::SQLite
+-interactive: show first all distributions to test and wait for confirmation
+-wait: wait at the end of the smoke run
+-batch: avoid interactivity by using some defaults (default: $batch)
+-forparallelsmoker: runs for a parallel smoker
+-builddirreuse: set the corresponding CPAN shell option
+-cpanconf key=val: change CPAN configuration variable
+-moduleprintused: report used modules using Module::PrintUsed
+-unkind:      disable the default to run with low priority
+
+-n:  do not do anything, just show what would be done
+-debug: enable more debugging
+EOF
+if ($strace && -e $strace) {
+    die "File specified with -strace '$strace' must not exist";
+}
+if ($truss && -e $truss) {
+    die "File specified with -truss '$truss' must not exist";
+}
+if ($ktrace && -e $ktrace) {
+    die "File specified with -ktrace '$ktrace' must not exist";
+}
+my @dist_or_mods = @ARGV;
+if ($do_action eq 'shell' && !@dist_or_mods) {
+    @dist_or_mods = "This_is_just_a_dummy";
+}
+if ($fl) {
+    open my $fh, $fl
+	or die "Cannot open filelist $fl: $!";
+    while(<$fh>) {
+	chomp;
+	push @dist_or_mods, split / /;
+    }
+}
+if ($do_continue || $do_recent) {
+    require LWP::UserAgent;
+    require YAML;
+
+    my $last_run_path;
+
+    if ($do_continue) {
+	require File::ReadBackwards;
+	if (my $lastfh = File::ReadBackwards->new($cpan_smoke_last)) {
+	    while (!$lastfh->eof) {
+		my $line = $lastfh->readline;
+		next if $line =~ m{^\s*(#|$)};
+		chomp($last_run_path = $line);
+		last;
+	    }
+	    $lastfh->close;
+	}
+    }
+	
+    local $ENV{FTP_PASSIVE} = 1;
+    my $ua = LWP::UserAgent->new;
+    my $resp = $ua->get($recent_url);
+    if (!$resp->is_success) {
+	die "Cannot get successful request from $recent_url: " . $resp->status_line;
+    }
+    my $recent = YAML::Load($resp->decoded_content);
+    if (!$recent) {
+	die "Cannot get YAML content";
+    }
+    if (ref $recent eq 'HASH') { # protocol >= 1 
+	$recent = $recent->{recent};
+    }
+    for my $item (@$recent) {
+	next if $item->{path} =~ m{(\.patch\.gz|CHECKSUMS|\.readme|\.meta)$};
+	next if $item->{path} =~ m{/?00whois.(html|xml)$};
+	last if $last_run_path && $item->{path} eq $last_run_path;
+	(my $path = $item->{path}) =~ s{^id/}{}; # must be removed in protocol 1, not existent in protocol 0
+	push @dist_or_mods, $path;
+    }
+    if (!@dist_or_mods) {
+	warn "No new distributions to test.\n";
+	exit 0;
+    }
+}
+if (!@dist_or_mods) {
+    die "dist or mod?";
+}
+
+if (@pv) {
+    push @perls, map { "perl$_" } map { split /,/ } @pv;
+}
+
+if (!@perls) {
+    if ($all_perls) {
+	my @all_perl_defs;
+
+	my $latest_blead;
+	for my $candidate (glob("/usr/local/bin/perl5.*.*")) {
+	    next if !-x $candidate;
+	    if (my($ver, $minor) = $candidate =~ m{/perl(5\.(\d+)\.\d+)}) {
+		my $safe_ver = safe_version($ver);
+		my $is_devel = $minor % 2 == 1;
+		if ($^O eq 'freebsd' && $ver eq '5.8.9' && -x "/usr/perl$ver/bin/perl$ver") { # XXX works only for fbsd 8.0! XXX
+		    push @all_perl_defs, ["/usr/perl$ver/bin/perl$ver", $safe_ver];
+		} elsif (!$is_devel) {
+		    push @all_perl_defs, [$candidate, $safe_ver];
+		} else {
+		    if (!$latest_blead || $latest_blead->[1] < $safe_ver) {
+			$latest_blead = [$candidate, $safe_ver];
+		    }
+		}
+	    }
+	}
+
+	# Only one blead to test
+	if ($latest_blead) {
+	    push @all_perl_defs, $latest_blead;
+	}
+
+	# Newest first
+	my @all_perls = map { $_->[0] } sort { $b->[1] <=> $a->[1] } @all_perl_defs;
+
+	print STDERR "Found perls: @all_perls\n";
+
+	push @perls, @all_perls;
+    }
+    if (!@perls) {
+	die "Please specify a perl version with -pv, a perl binary with -perl, or -a\n";
+    }
+}
+
+{
+    my @new_perls;
+    for my $perl (@perls) {
+	if (!is_in_path($perl)) {
+	    warn "*** WARNING: $perl is not available, removing from list...\n";
+	} else {
+	    push @new_perls, $perl;
+	}
+    }
+    @perls = @new_perls;
+    if (!@perls) {
+	die "*** ERROR: Could not find any requested perl.\n";
+    }
+}
+
+CPAN::HandleConfig->load;
+my $prefs_dir_is_changed;
+if ($prefs_dir) {
+    $prefs_dir_is_changed = 1;
+} else {
+    $prefs_dir = $CPAN::Config->{prefs_dir};
+}
+
+# to make it easy to copy'n'paste download URLs from search.cpan.org:
+for (@dist_or_mods) {
+    s{^\Qhttp://search.cpan.org/CPAN/authors/id/\E./../}{};
+}
+
+# And allow also partial distribution names without author name
+TRY_PARTIAL_RESOLVE: {
+    my %partial_to_full;
+    my %duplicates;
+    for my $dist_or_mod (@dist_or_mods) {
+	if ($dist_or_mod !~ m{/} && $dist_or_mod =~ m{^(.*-\d.*)(?:\.(?:tar\.gz|tar.bz2|zip))?$}) {
+	    my $distvname = $1;
+	    # looks like a partial distribution name
+	    my $packages_file = $CPAN::Config->{keep_source_where} . "/modules/02packages.details.txt.gz";
+	    if (!keys %partial_to_full) {
+		if (!eval {
+		    require CPAN::DistnameInfo;
+		    require PerlIO::gzip;
+		    open my $FH, "<:gzip", $packages_file
+			or die "Can't open $packages_file: $!";
+		    my $state = "h";
+		    while(<$FH>) {
+			if ($state eq 'h') {
+			    if (/^$/) {
+				$state = 'b';
+			    }
+			} else {
+			    my(undef,undef, $dist) = split;
+			    my $d = CPAN::DistnameInfo->new($dist);
+			    my $filename = $d->filename;
+			    my $this_distvname = $d->distvname;
+			    if (defined $filename && defined $this_distvname) {
+				my $full_distname = $d->cpanid . "/" . $filename;
+				if (exists $partial_to_full{$this_distvname} && $partial_to_full{$this_distvname} ne $full_distname) {
+				    $duplicates{$this_distvname}++;
+				} else {
+				    $partial_to_full{$this_distvname} = $full_distname;
+				}
+			    }
+			}
+		    }
+		    1;
+		}) {
+		    warn $@;
+		}
+            }
+	    if (!keys %partial_to_full) {
+		warn "WARN: Can't resolve any partial distribution names.";
+		last TRY_PARTIAL_RESOLVE;
+	    }
+	    if ($duplicates{$distvname}) {
+		warn "WARN: Found duplicate for $distvname, cannot resolve...";
+	    } elsif (exists $partial_to_full{$distvname}) {
+		$dist_or_mod = $partial_to_full{$distvname};
+	    } else {
+		warn "WARN: Can't resolve the partial distribution name $distvname";
+	    }
+        }
+    }
+}
+
+{
+    my @new_dist_or_mods;
+    my %seen_dist_maturity;
+    my %seen_dist_released;
+    my %seen_mod;
+    my %blacklist_author = map{($_,1)} @blacklist_author;
+    for my $dist_or_mod (@dist_or_mods) {
+	my $d_info = CPAN::DistnameInfo->new($dist_or_mod);
+	if (!$d_info || !$d_info->dist) {
+	    # It's a module
+	    if ($seen_mod{$dist_or_mod}) {
+		warn "Remove " . $dist_or_mod . " from list...\n";
+	    } else {
+		push @new_dist_or_mods, $dist_or_mod;
+		$seen_mod{$dist_or_mod}++;
+	    }
+	} else {
+	    my $cpanid = $d_info->cpanid;
+	    if (!$cpanid) {
+		# assume "short" distname
+		($cpanid) = $dist_or_mod =~ m{([^/]+)};
+	    }
+	    if ($cpanid && $blacklist_author{$cpanid}) {
+		warn "Remove blacklisted distribution " . $d_info->distvname . " from list...\n";
+		next;
+	    }
+	    my($dist, $maturity) = ($d_info->dist, $d_info->maturity);
+	    if ($dist && $dist =~ m{/Bundle-Everything-}) { # XXX why it doesn't work through distroprefs?
+		warn "Remove 'Bundle-Everything' from list...\n";
+		next;
+	    }
+	    my $dist_maturity_key = "$dist/$maturity";
+	    if (!$d_info->dist) { # it's probably a mod name
+		push @new_dist_or_mods, $dist_or_mod;
+	    } elsif ($seen_dist_maturity{$dist_maturity_key}) {
+		warn "Remove " . $d_info->distvname . " (maturity=$maturity) from list...\n";
+	    } elsif ($maturity eq 'developer' && $seen_dist_released{$dist}) {
+		warn "Remove " . $d_info->distvname . " from list (younger _released_ version exists)...\n";
+	    } else {
+		push @new_dist_or_mods, $dist_or_mod;
+		$seen_dist_maturity{$dist_maturity_key}++;
+		if ($d_info->maturity eq 'released') {
+		    $seen_dist_released{$dist}++;
+		}
+	    }
+	}
+    }
+    @dist_or_mods = @new_dist_or_mods;
+}
+
+if (!@dist_or_mods) {
+    warn "No distributions to test.\n";
+    exit 0;
+}
+
+if ($r) {
+    @dist_or_mods = reverse @dist_or_mods;
+}
+
+{
+    for my $another_tmp (qw(/var/tmp /tmp)) {
+	if (-d $another_tmp && -w $another_tmp) {
+	    my $_another_tmp = $another_tmp . "/cpansmoker-$<";
+	    if (!-d $_another_tmp) {
+		mkdir $_another_tmp
+		    or die "Cannot create $_another_tmp: $!";
+		chmod 01777, $_another_tmp
+		    or die "Cannot set sticky bit: $!";
+	    }
+	    $ENV{TMPDIR} = $_another_tmp;
+	    last;
+	}
+    }
+}
+
+if ($interactive) {
+    print STDERR "Continue tests with the following perl versions
+    @perls
+and CPAN distributions or modules
+    @pre_dist_or_mods @dist_or_mods
+ (Y/n) ";
+    my $yn = <STDIN>;
+    exit 0 if $yn =~ m{^n}i;
+}
+
+
+if ((   $n                    # no idletermchecker in no exec mode:
+     || !$ENV{DISPLAY}        # no idletermchecker if there's no DISPLAY
+     || $do_action eq 'shell'
+    ) && $warntimeout) {
+    $warntimeout = undef;
+}
+
+chomp(my $tty = `tty`);
+
+my $idletermchecker_pid;
+if ($warntimeout) {
+    if (is_in_path("idletermchecker")) {
+	if ($tty) {
+	    $idletermchecker_pid = fork;
+	    if ($idletermchecker_pid == 0) {
+		exec "idletermchecker", "-tk", "-s", "-timeout", $warntimeout, "-timeout2", $warntimeout+60, "-q", $tty;
+		die $!;
+	    }
+	} else {
+	    print STDERR "NOTE: cannot get tty, idletermchecker will not run.\n";
+	}
+    } else {
+	print STDERR "NOTE: idletermchecker is not available.\n";
+    }
+}
+
+# neither "nice" on Windows, nor setpriority or so:
+if (!$unkind && $^O eq 'MSWin32') {
+    eval {
+	require Win32::Process;
+	Win32::Process::Open(my $proc, $$, 0)
+		or die($^E);
+	$proc->SetPriorityClass(Win32::Process::IDLE_PRIORITY_CLASS())
+	    or die($^E);
+    };
+    warn $@ if $@;
+}
+
+open my $logfh, ">>", $cpan_smoke_log
+    or warn "WARNING: Cannot write to logfile $cpan_smoke_log: $!";
+$logfh->autoflush(1);
+
+if ($save_reports) {
+    my($tmpfh,$tmpfile) = tempfile(SUFFIX => "_config.ini", UNLINK => 1)
+	or die "Can't create tempfile: $!";
+    open my $ifh, "<", "$ENV{HOME}/.cpanreporter/config.ini"
+	or die "Can't open config.ini: $!";
+    my $workflow_dir = "$ENV{HOME}/var/cpansmoker";
+    my $new_reports_dir = "$workflow_dir/new";
+    my $changed_transport = 0;
+    my $new_transport_setting = "transport=File $new_reports_dir\n";
+    while(<$ifh>) {
+	if (/^transport\s*=/) {
+	    print $tmpfh $new_transport_setting;
+	    $changed_transport++;
+	} elsif (/^edit_report\s*=/) {
+	    print $tmpfh "edit_report=default:no\n";
+	} elsif (/^cc_author\s*=/) {
+	    # skip
+	} elsif (/^send_report\s*=/) {
+	    print $tmpfh "send_report=default:yes\n";
+	} else {
+	    print $tmpfh $_;
+	}
+    }
+    if (!$changed_transport) {
+	print $tmpfh $new_transport_setting;
+	$changed_transport++;
+    }
+    close $tmpfh
+	or die "Error while closing: $!";
+    for my $dir ($new_reports_dir,
+		 "$workflow_dir/sync",
+		 "$workflow_dir/process",
+		 "$workflow_dir/done",
+		 "$workflow_dir/undecided",
+		) {
+	mkpath $dir if !-d $dir;
+    }
+    $ENV{PERL_CPAN_REPORTER_CONFIG} = $tmpfile;
+} elsif ($no_fail_reports) {
+    my $confignofail = "$ENV{HOME}/.cpanreporter/confignofail.ini"; # XXX maybe use PERL_CPAN_REPORTER_DIR?
+    if (!-r $confignofail) {
+	die "Cannot read <$confignofail>, needed for -skipfail...";
+    }
+    warn "Skipping FAIL reports...\n";
+    $ENV{PERL_CPAN_REPORTER_CONFIG} = $confignofail;
+}
+
+if ($destroy_perl_in_path) {
+    require File::Temp;
+    my($tempdir) = File::Temp::tempdir(TMPDIR => 1, CLEANUP => 1);
+    my $perlbin = "$tempdir/perl";
+    open my $ofh, ">> $perlbin" or die "Cannot write to $perlbin: $!";
+    print $ofh <<'EOF' or die $!;
+#! /bin/sh
+echo '#'
+echo '# Please use $^X instead of perl in system()'
+echo '# and similar calls.'
+echo '#'
+echo '# See also the $EXECUTABLE_NAME or $^X entry'
+echo '# in the perlvar.pod documentation.'
+echo '#'
+exit 1
+EOF
+    close $ofh
+	or die $!;
+    chmod 0755, $perlbin
+	or die $!;
+    $ENV{PATH} = "$tempdir:$ENV{PATH}"; # it's not MSDOS, so can use ":"
+}
+
+my $PERL_CPAN_REPORTER_DIR;
+$PERL_CPAN_REPORTER_DIR = $ENV{PERL_CPAN_REPORTER_DIR} if $ENV{PERL_CPAN_REPORTER_DIR};
+
+my $last_xterm_title;
+for my $perl (@perls) {
+    print STDERR "#"x70,"\n";
+    print STDERR "# $perl\n";
+    my $cpan_ver = do {
+	my @cmd = ($perl, "-we", q{use CPAN; print CPAN->VERSION(0)});
+	open my $fh, "-|", @cmd
+	    or die "Command @cmd failed: $!";
+	local $/;
+	<$fh>;
+    };
+
+    my $split_dists = $split_dists;
+    if ($do_action eq 'shell') {
+	$split_dists = 0;
+    }
+    if ($cpan_ver == 1.9258) {
+	warn <<EOF;
+**********************************************************************
+* Broken CPAN::PERL5LIB causing endless loops --- skipping $perl!
+**********************************************************************
+EOF
+	next;
+    }
+
+    my @dist_or_mods = @dist_or_mods;
+
+    # Set PERL_CPAN_REPORTER_DIR if $prefix/.cpanreporterdir file exists
+    local %ENV = %ENV; # local $ENV{PERL_CPAN_REPORTER_DIR} and a later local %ENV = %ENV seems to trigger a perl bug...
+    if ($PERL_CPAN_REPORTER_DIR) {
+	$ENV{PERL_CPAN_REPORTER_DIR} = $PERL_CPAN_REPORTER_DIR;
+    } else {
+	my $perl_prefix = `$perl -MConfig -e 'print \$Config{prefix}'`;
+	if ($perl_prefix && open my $fh, "$perl_prefix/.cpanreporterdir") {
+	    chomp(my $reporter_dir = <$fh>);
+	    if ($reporter_dir) {
+		if (!-d $reporter_dir) {
+		    warn "Specified reporter dir <$reporter_dir> does not exist, cannot use...";
+		} else {
+		    warn "Using .cpanreporter directory $reporter_dir...\n";
+		    $ENV{PERL_CPAN_REPORTER_DIR} = $reporter_dir;
+		}
+	    }
+	}
+    }
+
+    if ($skip_tested) {
+	# next two lines taken from cpan_allpackages:
+	my $thisperl = "perl-".`$perl -MConfig -e 'print \$Config{version}'`;
+	my $thispatch = `$perl -MConfig -e 'print \$Config{perl_patchlevel}'`;
+	if ($thispatch) {
+	    $thisperl .= " patch $thispatch";
+	}
+	my $thisarch = `$perl -MConfig -e 'print \$Config{archname}." ".\$Config{osvers}'`;
+
+	warn "About to parse sent reports...\n";
+	parse_reports_sent();
+
+	my @new_dist_or_mods;
+	for my $dist (@dist_or_mods) {
+	    my $d = CPAN::DistnameInfo->new($dist);
+	    my($author, $distname) = $dist =~ m{(.*)/(.*)}; # XXX should use distnameinfo
+	    no warnings 'uninitialized'; # undefs may happen in $author and $distname if it's a mod, not a dist
+	    if (my $old_d = $dists->{$d->maturity}->{$d->dist}->{$thisperl}->{$thisarch}) {
+		if (safe_version($d->version) > safe_version($old_d->{dist}->version)) {
+		    push @new_dist_or_mods, $dist;
+		} elsif ($debug) {
+		    warn "Skipping already tested $dist\n";
+		}
+	    } else {
+		push @new_dist_or_mods, $dist;
+	    }
+	}
+	@dist_or_mods = @new_dist_or_mods;
+	if (!@dist_or_mods) {
+	    warn "All dists already tested, skipping this perl...\n";
+	}
+    }
+#die "@dist_or_mods";
+
+    my $total_dists = scalar(@dist_or_mods) + scalar(@pre_dist_or_mods);
+    my $dist_i = 0;
+
+    while (@dist_or_mods) {
+	my @work_set;
+	if (!$split_dists) {
+	    @work_set = @dist_or_mods;
+	    @dist_or_mods = ();
+	} else {
+	    my $i = $split_dists;
+	    while(@dist_or_mods && $i > 0) {
+		push @work_set, shift @dist_or_mods;
+		$i--;
+	    }
+	    if ($rr) {
+		@work_set = reverse @work_set;
+	    }
+	}
+	
+	my $log_preamble = "$perl: $work_set[0] .. $work_set[-1]";
+	if ($logfh) {
+	    print $logfh "[" . scalar(localtime) . "] $log_preamble BEGIN\n";
+	}
+	my $std_title = "smoke($tty): $perl";
+	xterm_conf('-title', $std_title);
+
+	if ($prefs_dir && -d $prefs_dir && -r "$prefs_dir/SlayMakefile") {
+	    if (is_in_path("slaymake")) {
+		save_pwd {
+		    if (chdir $prefs_dir) {
+			my @cmd = qw(slaymake);
+			while () {
+			    system(@cmd);
+			    if ($? != 0) {
+				warn qq{Error while executing <@cmd>.
+Please fix and retry with <RETURN>: "};
+				<STDIN>;
+			    } else {
+				last;
+			    }
+			}
+		    }
+		};
+	    } else {
+		warn <<EOF;
+**********************************************************************
+* WARNING
+* SlayMakefile exists in $prefs_dir, but slaymake is not available.
+* Please install Slay::Maker from CPAN.
+* Proceeding without validating and updating distroprefs.
+**********************************************************************
+EOF
+	    }
+	}
+
+	my $cpan_shell_init = "";
+	$cpan_shell_init .= q#{ package CPAN::SRTShell; @ISA = $CPAN::Frontend; sub mysleep { shift; sleep shift()/10 }} $CPAN::Frontend="CPAN::SRTShell";#;
+	$cpan_shell_init .= q#CPAN::HandleConfig->load; #;
+	if ($do_action eq 'test' || $do_action eq 'shell') {
+	    if ($^O ne 'MSWin32') { # somehow does not work under Windows
+		$cpan_shell_init .= q{$CPAN::VERSION >= 1.9205 or warn(("*"x70)."\n*** Old CPAN version $CPAN::VERSION\n".("*"x70)."\n"); };
+	    }
+	    $cpan_shell_init .= q{$CPAN::Config->{test_report}=1; };
+	}
+	if (hostname eq 'devpc01-debian') {
+	    # use local rsync-recent mirror
+	} else {
+	    if ($bleeding_edge) {
+		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(ftp://pause.perl.org/pub/PAUSE/)]; };
+	    } else {
+		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(http://cpan.cpantesters.org/ ftp://ftp.funet.fi/pub/CPAN/)]; };
+	    }
+	}
+	$cpan_shell_init .= q{$CPAN::FTP::connect_to_internet_ok=1; };
+	# The new feature seems to be problematic:
+	$cpan_shell_init .= q{$CPAN::Config->{threshold_perl5lib_upto} = 9999999; };
+	if (!$use_distroprefs) {
+	    $cpan_shell_init .= q{$CPAN::Config->{prefs_dir} = ""; };
+	} elsif ($prefs_dir_is_changed) {
+	    $cpan_shell_init .= q{$CPAN::Config->{prefs_dir} = "} . $prefs_dir . q{"; };
+	}
+	$cpan_shell_init .= q{eval { require Expect; 1 } or $ENV{PERL_EXTUTILS_AUTOINSTALL}=q{--defaultdeps}; };
+	if ($use_sqlite) {
+	    $cpan_shell_init .= q#if (eval { require CPAN::SQLite; 1; }) { $CPAN::Config->{use_sqlite}=1; } else { $CPAN::Config->{cache_metadata}=1; } #;
+	} else {
+	    $cpan_shell_init .= q#$CPAN::Config->{use_sqlite}=0; $CPAN::Config->{cache_metadata}=1; #;
+	}
+	$cpan_shell_init .= q#$CPAN::Config->{prerequisites_policy} = q[follow]; #;
+	if ($batch) {
+	    $cpan_shell_init .= q#$CPAN::Config->{build_requires_install_policy} =~ s{ask/}{}; #; # don't be interactive
+	}
+
+	# perl belongs to this user -> no sudo necessary
+	if ($do_action eq 'install' || $do_action eq 'shell') {
+	    my $perl_fullpath = is_in_path($perl);
+	    my $perl_uid = (stat($perl_fullpath))[4];
+	    if ($perl_uid == $<) {
+		$cpan_shell_init .= q#$CPAN::Config->{make_install_make_command}=q{make}; $CPAN::Config->{mbuild_install_build_command}=q{./Build}; #;
+	    }
+	}
+	
+	if ($build_dir_reuse) {
+	    my $build_reuse_dir = "build_reuse_$perl";
+	    $build_reuse_dir =~ s{/}{_}g;
+	    $build_reuse_dir = "/usr/local/src/CPAN/$build_reuse_dir";
+	    mkdir $build_reuse_dir if !-d $build_reuse_dir;
+	    die "Cannot use $build_reuse_dir" if !-d $build_reuse_dir || !-w $build_reuse_dir;
+	    $cpan_shell_init .= q{$CPAN::Config->{build_dir_reuse} = 1; $CPAN::Config->{build_dir} = "}.$build_reuse_dir.q{"; };
+	} else {
+	    $cpan_shell_init .= q{$CPAN::Config->{build_dir_reuse} = 0; };
+	}
+
+	if ($debug) {
+	    $cpan_shell_init .= q#use Data::Dumper; warn Dumper $CPAN::Config; #;
+	}
+
+	for my $cpan_conf (@cpan_conf) {
+	    my($key,$val) = split /=/, $cpan_conf, 2;
+	    if (!defined $key || !defined $val) {
+		die "Probably invalid cpan_conf value '$cpan_conf'";
+	    }
+	    $cpan_shell_init .= q#$CPAN::Config->{# . $key . q#} = q[# . $val . q#]; #;
+	}
+
+	my @cmd = ($perl);
+ 	if ($perl =~ /5\.6\.2/ || $perl =~ /5\.005/) {
+	    # Preload to avoid segfaults
+	    push @cmd, "-MFile::HomeDir";
+ 	}
+	push @cmd, ("-MCPAN", "-e");
+	if ($do_action eq 'shell') {
+	    push @cmd, $cpan_shell_init . $do_action;
+	} else {
+	    if ($has_xterm_conf) {
+		my $dist_or_mods_line = "";
+		for my $dist (@pre_dist_or_mods, @work_set) {
+		    my $pc = "";
+		    if ($total_dists > 1) {
+			$pc = int($dist_i*100/$total_dists)."%";
+		    }
+		    $dist_or_mods_line .= qq{system(q{xterm-conf -force -title "$std_title $dist $pc"}); \$0 = "\$^X (CPAN.pm $do_action $dist)"; $do_action(qq{$dist}); };
+		    $last_xterm_title = "$std_title $dist";
+		    $dist_i++;
+		}
+		push @cmd, $cpan_shell_init . $dist_or_mods_line;
+	    } else {
+		my $dist_or_mods_line = join(", ", map { qq{qq{$_}} } @pre_dist_or_mods, @work_set);
+		push @cmd, $cpan_shell_init . $do_action.qq{($dist_or_mods_line)};
+	    }
+	}
+
+	if ($strace) {
+	    unshift @cmd, 'strace', '-tt', '-f', '-o', $strace;
+	}
+	if ($truss) {
+	    unshift @cmd, 'truss', '-d', '-f', '-o', $truss, '-a', '-e';
+	}
+	if ($ktrace) {
+	    unshift @cmd, 'ktrace', '-id', '-f', $ktrace;
+	}
+
+	if (!$unkind && is_in_path("nice") && $^O ne 'MSWin32') {
+	    unshift @cmd, "nice";
+	}
+
+	my $data_limit = 500*1024*1024;
+	my $cputime_limit = 3600*1;
+	my $openfiles_limit = 2048; # the freebsd default is at 22500
+	if (is_in_path("limits") && $^O ne 'MSWin32') {
+	    # on my FreeBSD system, kern.maxfiles is ~ 12000
+	    # -v is needed for FreeBSD 7.x
+	    unshift @cmd, "limits", "-t", $cputime_limit, "-d", $data_limit, "-v", $data_limit, "-n", $openfiles_limit;
+	} elsif (eval { require BSD::Resource; 1 }) {
+	    # Note that limiting in THIS process is not what is
+	    # "correct", but resource limits are inherited by the
+	    # forked processes and such a large data limit is enough
+	    # for the wrapper process, so it works.
+	    #
+	    my $set_limit_if_higher = sub {
+		my($limit, $value, $label) = @_;
+		my $old_limit = BSD::Resource::getrlimit($limit);
+		if (!defined $old_limit || $old_limit == -1) {
+		    if (!BSD::Resource::setrlimit($limit, $value, $value)) {
+			warn "*** WARNING: Could not set resource limit of $label to $value.\n";
+		    }
+		}
+	    };
+	    # linux does not honor RLIMIT_DATA, but RLIMIT_AS
+	    $set_limit_if_higher->(BSD::Resource::RLIMIT_AS(), $data_limit);
+	    $set_limit_if_higher->(BSD::Resource::RLIMIT_CPU(), $cputime_limit);
+	    $set_limit_if_higher->(BSD::Resource::RLIMIT_NOFILE(), $openfiles_limit);
+	} else {
+	    warn "*** WARNING: Neither limits(1) nor BSD::Resource available, not resource limits possible.\n";
+	}
+
+	if ($n) {
+	    unshift @cmd, "echo";
+	}
+
+	check_disk_free($perl);
+
+	print STDERR "# @cmd\n";
+	local %ENV = %ENV;
+	if ($batch) {
+	    #$ENV{PERL_MM_USE_DEFAULT} = 1; --- currently bad idea ... turns CPAN::Reporter questions off
+	    $ENV{PERL_EXTUTILS_AUTOINSTALL}=q{--defaultdeps};
+	    $ENV{PERL_BATCH} = 'yes'; # private extension, used in 01.DISABLED.yml
+	}
+	if ($for_parallel_smoker) {
+	    $ENV{PERL_PARALLEL_SMOKER} = 'yes'; # private extension, used in distroprefs files
+	}
+	$ENV{DBIC_NO_WARN_BAD_PERL} = 1; # with the warning messages test output gets so long being unusable
+	my $save_perl5opt = $ENV{PERL5OPT};
+	if ($module_printused) {
+	    $ENV{PERL5OPT} .= " -MModule::PrintUsed";
+	}
+	system @cmd;
+	if ($? & 127) {
+	    die sprintf("Child died with signal %d, %s coredump\n",
+			($? & 127),  ($? & 128) ? 'with' : 'without');
+	}
+	if (defined $save_perl5opt) {
+	    $ENV{PERL5OPT} = $save_perl5opt;
+	}
+	if ($logfh) {
+	    print $logfh "[" . scalar(localtime) . "] $log_preamble DONE\n";
+	}
+    }
+}
+
+if ($do_continue && @dist_or_mods) {
+    open my $ofh, ">>", $cpan_smoke_last
+	or die "Cannot write to $cpan_smoke_last: $!";
+    my $last_dist = $r ? $dist_or_mods[-1] : $dist_or_mods[0];
+    print $ofh $last_dist, "\n"
+	or die $!;
+    close $ofh
+	or die $!;
+}
+
+END {
+    if ($wait) {
+	print STDERR "Smoking finished, enter RETURN to exit: ";
+	<STDIN>;
+    }
+
+    if (defined $idletermchecker_pid) {
+	#kill KILL => $idletermchecker_pid;
+	system "idletermchecker", "-tk", "-s", "-remove", $tty;
+    }
+
+    if ($signal_end && time-$start_time>60 && is_in_path("tkmessage")) {
+	my $msg = "Smoking finished (perls=" . join(", ", @perls) . ", dists=";
+	$msg .= @dist_or_mods > 3 ? join(", ", @dist_or_mods[0..2]) . " ..." : join(", ", @dist_or_mods);
+	$msg .= ")";
+	print STDERR $msg, "\n";
+	if (fork == 0) {
+	    exec("tkmessage", "-bg", "green", "-fg", "black", $msg);
+	}
+    }
+
+    xterm_conf(-title => ($last_xterm_title||"") . " FINISHED");
+}
+
+# from cpan_allpackages and changed (seek magic)
+sub parse_reports_sent { # takes ~3 seconds
+    my $cpan_reporter_dir = $ENV{PERL_CPAN_REPORTER_DIR} || "$ENV{HOME}/.cpanreporter";
+    open my $fh, "$cpan_reporter_dir/reports-sent.db"
+	or do {
+	    warn "*** Can't open $cpan_reporter_dir/reports-sent.db: $!\n";
+	    warn "*** Assuming this is the very first run!\n";
+	    return;
+	};
+    if (defined $reports_sent_seek_pos) {
+	seek $fh, $reports_sent_seek_pos, 0
+	    or die $!;
+    }
+    while(<$fh>) {
+	next if /^#/;
+	chomp;
+	if (my($phase, $action, $dist, $perl, $arch) =
+		$_ =~ m{^
+			(\S+)\s+
+			(\S+)\s+
+			(\S+)\s+
+			\(([^\)]+)\)\s+
+			(.+)
+			$}x) {
+	    my $d = CPAN::DistnameInfo->new($dist.".tar.gz");
+	    my $maturity = $d->maturity;
+	    if (my $old_d = $dists->{$maturity}->{$d->dist}->{$perl}->{$arch}) {
+		if (safe_version($d->version) <= safe_version($old_d->{dist}->version)) {
+		    next;
+		}
+	    }
+	    $dists->{$maturity}->{$d->dist}->{$perl}->{$arch} = {dist => $d,
+								 phase => $phase,
+								 action => $action};
+	} else {
+	    warn "Cannot parse line $_";
+	}
+    }
+    $reports_sent_seek_pos = tell $fh;
+}
+
+# from cpan_allpackages
+# from cpantestersmatrix:
+sub safe_version {
+    my $version_string = shift;
+    use version;
+    no warnings;
+    while(length $version_string) {
+	local $^W;
+	my $version = eval { version->new($version_string) };
+	if (!$@) {
+	    return $version;
+	}
+	$version_string = substr($version_string,0,-1);
+    }
+    "0";
+}
+
+sub xterm_conf {
+    my(@args) = @_;
+    if (!defined $has_xterm_conf) {
+	$has_xterm_conf = is_in_path("xterm-conf") ? 1 : 0;
+    }
+    return if (!$has_xterm_conf);
+    my @cmd = ("xterm-conf", "-force", @args);
+    system @cmd;
+}
+
+sub check_disk_free {
+    my($perl) = @_;
+    # File::HomeDir is needed because of http://rt.cpan.org/Ticket/Display.html?id=34066
+    my @cmd = ($perl);
+    if ($perl =~ /5\.6\.2/ || $perl =~ /5\.005/) {
+	# Preload to avoid segfaults
+	push @cmd, '-MFile::HomeDir';
+    }
+    push @cmd, '-MCPAN', '-e', '$CPAN::Be_Silent=1;CPAN::HandleConfig->load; print $CPAN::Config->{build_dir}';
+    open my $fh, "-|", @cmd
+	or die $!;
+    my $build_dir;
+    while(<$fh>) { # Why is this complicated constructed needed to get the build_dir out of the output?
+ 	chomp;
+	$build_dir = $_;
+	last if $build_dir;
+    }
+    close $fh;
+    if (!$build_dir) {
+	die "Should not happen: cannot parse build directory using <@cmd>";
+    }
+    if (!-d $build_dir) {
+	die "Build directory <$build_dir> for perl <$perl> does not exist";
+    }
+    if (eval { require Filesys::DfPortable; 1 }) {
+	while () {
+	    my $build_ref = Filesys::DfPortable::dfportable($build_dir);
+	    if (!$build_ref) {
+		die "Cannot get filesys information for $build_dir";
+	    }
+	    last if ($build_ref->{bavail} > $min_build_dir_avail);
+	    print STDERR qq{Less than $min_build_dir_avail bytes on $build_dir available: $build_ref->{bavail}.
+Please cleanup the directory and go on with <RETURN>: };
+	    if (is_interactive()) {
+		<STDIN>;
+		sleep 1; # help against overruns
+	    } else {
+		print STDERR qq{(sleeping for 60 seconds...)\n};
+		sleep 60;
+	    }
+	}
+
+	require File::Spec;
+	while () {
+	    my $tmp_ref = Filesys::DfPortable::dfportable(File::Spec->tmpdir);
+	    if (!$tmp_ref) {
+		die "Cannot get filesys information for " . File::Spec->tmpdir;
+	    }
+	    last if ($tmp_ref->{bavail} > $min_tmp_dir_avail);
+	    print STDERR qq{Less than $min_tmp_dir_avail bytes on " . File::Spec->tmpdir . " available: $tmp_ref->{bavail}.
+Please cleanup the directory and go on with <RETURN>: };
+	    if (is_interactive()) {
+		<STDIN>;
+		sleep 1; # help against overruns
+	    } else {
+		print STDERR qq{(sleeping for 60 seconds...)\n};
+		sleep 60;
+	    }
+	}
+    } else {
+	warn <<EOF;
+***************************************************************************
+* WARNING:
+*
+*   Filesys::DfPortable is not available, so no disk free check can be done
+*
+***************************************************************************
+EOF
+    }
+}
+
+# REPO BEGIN
+# REPO NAME is_in_path /home/e/eserte/work/srezic-repository 
+# REPO MD5 81c0124cc2f424c6acc9713c27b9a484
+
+sub is_in_path {
+    my($prog) = @_;
+    return $prog if (file_name_is_absolute($prog) and -f $prog and -x $prog);
+    require Config;
+    %Config::Config = %Config::Config if 0; # cease -w
+    my $sep = $Config::Config{'path_sep'} || ':';
+    foreach (split(/$sep/o, $ENV{PATH})) {
+	if ($^O eq 'MSWin32') {
+	    # maybe use $ENV{PATHEXT} like maybe_command in ExtUtils/MM_Win32.pm?
+	    return "$_\\$prog"
+		if (-x "$_\\$prog.bat" ||
+		    -x "$_\\$prog.com" ||
+		    -x "$_\\$prog.exe" ||
+		    -x "$_\\$prog.cmd");
+	} else {
+	    return "$_/$prog" if (-x "$_/$prog" && !-d "$_/$prog");
+	}
+    }
+    undef;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME file_name_is_absolute /home/e/eserte/work/srezic-repository 
+# REPO MD5 89d0fdf16d11771f0f6e82c7d0ebf3a8
+
+BEGIN {
+    if (eval { require File::Spec; defined &File::Spec::file_name_is_absolute }) {
+	*file_name_is_absolute = \&File::Spec::file_name_is_absolute;
+    } else {
+	*file_name_is_absolute = sub {
+	    my $file = shift;
+	    my $r;
+	    if ($^O eq 'MSWin32') {
+		$r = ($file =~ m;^([a-z]:(/|\\)|\\\\|//);i);
+	    } else {
+		$r = ($file =~ m|^/|);
+	    }
+	    $r;
+	};
+    }
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME save_pwd /home/e/eserte/work/srezic-repository 
+# REPO MD5 0f7791cf8e3b62744d7d5cfbd9ddcb07
+
+=head2 save_pwd(sub { ... })
+
+=for category File
+
+Save the current directory and assure that outside the block the old
+directory will still be valid.
+
+=cut
+
+sub save_pwd (&) {
+    my $code = shift;
+    require Cwd;
+    my $pwd = Cwd::cwd();
+    eval {
+	$code->();
+    };
+    my $err = $@;
+    chdir $pwd or die "Can't chdir back to $pwd: $!";
+    die $err if $err;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME is_interactive /home/e/eserte/work/srezic-repository 
+# REPO MD5 3c8170d60ac3c3648e9b93a995ec6615
+
+=head2 is_interactive()
+
+=for category Term
+
+Return true, if the process has a terminal.
+
+=cut
+
+sub is_interactive {
+    if ($^O eq 'MSWin32' || !eval { require POSIX; 1 }) {
+	# fallback
+	return -t STDIN && -t STDOUT;
+    }
+
+    # from perlfaq8
+    open(TTY, "/dev/tty") or return 0;
+    my $tpgrp = POSIX::tcgetpgrp(fileno(*TTY));
+    my $pgrp = getpgrp();
+    if ($tpgrp == $pgrp) {
+	1;
+    } else {
+	0;
+    }
+}
+# REPO END
+
+__END__
+
+=head1 NAME
+
+cpan_smoke_modules - test and report CPAN modules with more perls
+
+=head1 SYNOPSIS
+
+    cpan_smoke_modules module1 author/distribution.tar.gz ...
+
+=head1 DESCRIPTION
+
+Smoke test the given modules with all or some available perls.
+
+You can supply module names (e.g. C<DBD::mysql>) or full distribution
+names (e.g. C<SREZIC/Tk-804.028.tar.gz>, with or without the
+additional directory prefix C<S/SR>) or partial distibution names
+(e.g. C<Tk-804.028>). Partial distribution names are currently (August
+2009) nearly unique enough (there's only one exception). Note that
+additional grepping is used for partial distribution names, so avoid
+it if possible.
+
+Some options like C<-skiptested> can only operate if a distribution
+name (full or partial) was given, but not for module names.
+
+=head2 OPTIONS
+
+=over
+
+=item -n
+
+Dry run.
+
+=item -perl I<executable> [-perl ...]
+
+Specify which perl to use. Can be specified multiple times.
+
+=item -pv I<version>,I<version>,...
+
+This is the short version of the B<-perl> option. Use the perl
+versions, separated by commas.
+
+=item -allperls
+
+Use more perls than the standard four (5.00505, 5.6.2, 5.8.8, 5.10.0).
+This includes for instance threaded perls.
+
+=item -install
+
+Do not only test, but also install.
+
+=item -continue
+
+Fetch the RECENT distributions list from a CPAN site and continue from
+an earlier smoke. This uses the last distribution listed in F<<
+~/.cpan_smoke_modules_<$archname>.last >> as an anchor point.
+
+=item -recent
+
+Fetch the RECENT distributions list from a CPAN site and smoke them
+all.
+
+=item -interactive
+
+Together with B<-continue> or B<-recent>: ask first before starting
+the smoke.
+
+=item -reverse
+
+Reverse the list of modules/distributions to test, used in conjunction
+with B<-continue> or B<-recent>.
+
+=item -[no]sqlite
+
+Use/do not use L<CPAN::SQLite>. On by default. If CPAN::SQLite is not
+available, then the normal non-sqlite internal storage will be used.
+
+=item -fl I<file>
+
+Specify a file with the listed distributions/modules.
+
+=imte -builddirreuse
+
+set the build_dir_reuse flag of CPAN.pm. Not well tested.
+
+=item -warntimeout I<seconds>
+
+Seconds to wait before showing the warn dialog. Default is 60 seconds.
+
+=back
+
+=head1 NOTES
+
+Assumption is that distributions are sorted in reverse order, that is
+newest first. Any later distribution version on the command line will
+be removed from the list.
+
+    
+=head1 TODO
+
+    * neuen recent-Mechanismus anwenden
+
+    * evtl. auch das zuletzt getestete Modul merken und/oder
+      ~/.cpanreporter/reports-sent.db verwenden, um zu sehen, welche
+      Dists getestet werden müssen (leider sind dort die disabled=1
+      markierten Dists nicht enthalten)
+
+=head1 AUTHOR
+
+Slaven ReziE<0x0107>
+
+=cut
