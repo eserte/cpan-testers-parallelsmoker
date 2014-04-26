@@ -2,10 +2,9 @@
 # -*- perl -*-
 
 #
-# $Id: cpan_smoke_modules,v 1.117 2012/03/22 21:49:42 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2007, 2008, 2009, 2011, 2012 Slaven Rezic. All rights reserved.
+# Copyright (C) 2007, 2008, 2009, 2011, 2012, 2013, 2014 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -20,9 +19,9 @@ use Getopt::Long;
 use CPAN;
 use CPAN::DistnameInfo 0.10; # .tar.bz2 support, TRIAL support
 use IO::Handle;
-use Sys::Hostname qw(hostname);
 use File::Temp qw(tempfile);
 use File::Path qw(mkpath);
+use Sys::Hostname qw(hostname);
 
 sub save_pwd (&);
 
@@ -33,54 +32,8 @@ my $start_time = time;
 my $addarch = $Config{myarchname} ? "_$Config{myarchname}" : "";
 my $cpan_smoke_last = "$ENV{HOME}/.cpan_smoke_modules$addarch.last";
 my $cpan_smoke_log  = "$ENV{HOME}/.cpan_smoke_modules$addarch.log";
+my $cpan_smoke_typescripts_dir = "$ENV{HOME}/.cpan_smoke_modules_typescripts";
 
-## XXX hardcoded list for biokovo XXX
-## -> now generated dynamically, see below
-#my @all_perls = 
-#    (
-#     #'/usr/perl5.004_04/bin/perl5.00404',
-#     #'/usr/perl5.005_03d/bin/perl5.00503',
-#     #'/usr/perl5.005_05/bin/perl5.00505',
-#     #'/usr/perl5.6.0/bin/perl5.6.0',
-#     #'/usr/perl5.6.1/bin/perl5.6.1',
-#     #'/usr/perl5.6.1d/bin/perl5.6.1',
-#     #'/usr/perl5.6.2/bin/perl5.6.2',
-#     #'/usr/perl5.6.2d/bin/perl5.6.2',
-#     #'/usr/perl5.8.0/bin/perl5.8.0',
-#     #'/usr/perl5.8.0d/bin/perl5.8.0',
-#     #'/usr/perl5.8.1/bin/perl5.8.1',
-#     #'/usr/perl5.8.1d/bin/perl5.8.1',
-#     #'/usr/perl5.8.2d/bin/perl5.8.2',
-#     #'/usr/perl5.8.3/bin/perl5.8.3',
-#     #'/usr/perl5.8.3d/bin/perl5.8.3',
-#     #'/usr/perl5.8.4/bin/perl5.8.4',
-#     #'/usr/perl5.8.5d/bin/perl5.8.5',
-#     #'/usr/perl5.8.6/bin/perl5.8.6',
-#     #'/usr/perl5.8.7/bin/perl5.8.7',
-#     #'/usr/perl5.8.8/bin/perl5.8.8',
-#     #'/usr/perl5.8.8d/bin/perl5.8.8',
-#     '/usr/perl5.8.9/bin/perl5.8.9',
-#     #'/usr/perl5.9.0/bin/perl5.9.0',
-#     #'/usr/perl5.9.0d/bin/perl5.9.0',
-#     #'/usr/perl5.9.4/bin/perl5.9.4',
-#     #'/usr/perl5.9.5/bin/perl5.9.5',
-#     #'/usr/perl5.9.5d/bin/perl5.9.5',
-#     #'/usr/perl5.10.0/bin/perl5.10.0', # XXX metabase not installed
-#     #'/usr/perl5.10.0d/bin/perl5.10.0',
-#     '/usr/perl5.10.1/bin/perl5.10.1',
-#     #'/usr/perl5.11.0/bin/perl5.11.0',
-#     #'/usr/perl5.11.0d/bin/perl5.11.0',
-#     #'/usr/perl5.11.4/bin/perl5.11.4',
-#     #'/usr/perl5.11.5/bin/perl5.11.5',
-#     '/usr/perl5.12.0/bin/perl5.12.0',
-#     #'/usr/perl5.12.0t/bin/perl5.12.0', # XXX metabase not installed
-#     '/usr/perl5.12.3/bin/perl5.12.3',
-#     #'/usr/perl5.13.9/bin/perl5.13.9',
-#     '/usr/perl5.15.9/bin/perl5.15.9',
-#    );
-
-# No need to blacklist users anymore --- no mails are sent directly anymore.
-my @blacklist_author; # = qw(MLEHMANN PJFL);
 my @perls;
 my $dists;
 my $reports_sent_seek_pos;
@@ -91,7 +44,6 @@ my $n;
 my $r;
 my $rr; # reverse a working set (-splitdists) only
 my $use_sqlite = 0; # not default anymore --- sometimes there are locking problems
-$use_sqlite = 1 if hostname =~ m{^mom}; # known slow machine XXX -> should go to some config file
 my $fl;
 my $do_continue;
 my $do_recent;
@@ -103,16 +55,20 @@ my $wait;
 my $batch = 1;
 my $for_parallel_smoker = 0;
 my $all_perls = 1; # Usually I want them all
+my $skip_system_perl;
+my $do_this_perl;
 my $build_dir_reuse = 0; # not default - startup is tooo slow
 my $split_dists = $^O eq 'MSWin32' ? 5 : 50;
 my $has_xterm_conf;
 my $skip_tested;
 my $skip_tested_nondiscarded;
 my $no_fail_reports;
-my $save_reports;
+my $save_reports = 1;
+my $reports_workflow_dir;
+my $reports_workflow_default_dir = "$ENV{HOME}/var/cpansmoker";
 my $min_build_dir_avail = 2_000_000_000; # 2G
-my $min_tmp_dir_avail   =    50_000_000; # 50M
-my $bleeding_edge;
+my $min_tmp_dir_avail   = 50_000_000; # 50M
+my $min_dir_inodes_percent = 5;
 my $debug;
 my $destroy_perl_in_path = 0; # $^O ne 'MSWin32';
 my @pre_dist_or_mods;
@@ -120,16 +76,25 @@ my @cpan_conf;
 my $strace;
 my $truss;
 my $ktrace;
+my $do_typescript; # undef means: maybe
+my $typescript_file;
 my $use_distroprefs = 1;
+my $use_limits = 1;
 my $prefs_dir;
 my $signal_end = 1;
 my $module_printused;
 my $unkind = 0;
+my $mirror_url = 'http://cpan.cpantesters.org/';
+my $hidemod;
+my $use_vncserver;
+my $x11_display = ':9'; # ssh begins at :10
+my @touch_files;
 Getopt::Long::Configure('noauto_abbrev');
 GetOptions("n" => \$n,
 	   "r|reverse" => \$r,
 	   "rr" => \$rr,
 	   "a|allperls!" => \$all_perls,
+	   "skipsystemperl|skip-system-perl" => \$skip_system_perl,
 	   "i|install" => sub { $do_action = "install" },
 	   "shell" => sub {
 	       $do_action = "shell";
@@ -138,6 +103,7 @@ GetOptions("n" => \$n,
 	   "warntimeout=i" => \$warntimeout,
 	   'perl=s@' => \@perls,
 	   'pv=s@' => \@pv,
+	   'thisperl' => \$do_this_perl,
 	   'sqlite!' => \$use_sqlite,
 	   'fl|filelist=s' => \$fl,
 	   'c|cont|continue' => \$do_continue,
@@ -157,7 +123,12 @@ GetOptions("n" => \$n,
 	   },
 	   'nofailreport' => \$no_fail_reports,
 	   'savereports!' => \$save_reports,
-	   'bleededge|bleedingedge!' => \$bleeding_edge,
+	   'reportsworkflowdir=s' => \$reports_workflow_dir,
+	   'mirrorurl=s' => \$mirror_url,
+	   'mirrorurlct'    => sub { $mirror_url = 'http://cpan.cpantesters.org/' },
+	   'mirrorurlfunet' => sub { $mirror_url = 'ftp://ftp.funet.fi/pub/CPAN' },
+	   'mirrorurlperl'  => sub { $mirror_url = 'http://www.perl.com/CPAN/' },
+	   'mirrorurldevelooper' => sub { $mirror_url = 'http://cpan.develooper.com/' },
 	   'debug!' => \$debug,
 	   'pre=s@' => \@pre_dist_or_mods,
 	   'cpanconf=s@' => \@cpan_conf,
@@ -165,11 +136,15 @@ GetOptions("n" => \$n,
 	   'strace=s' => \$strace,
 	   'truss=s' => \$truss,
 	   'ktrace=s' => \$ktrace,
+	   'typescript!' => \$do_typescript,
 	   'distroprefs!' => \$use_distroprefs,
 	   'prefsdir=s' => \$prefs_dir,
+	   'limits!' => \$use_limits,
 	   'signalend!' => \$signal_end,
 	   'moduleprintused|module-printused!' => \$module_printused,
-	   'minbuilddiravail=i' => \$min_build_dir_avail,
+	   'minbuilddiravail=s' => \$min_build_dir_avail,
+	   'hidemod=s' => \$hidemod,
+	   'vnc!'  => \$use_vncserver,
 	  )
     or die <<EOF;
 usage: $0
@@ -178,7 +153,7 @@ usage: $0
      [-fl|-filelist file] [-c|-cont|-continue] [-recent] [-recenturl url]
      [-r|-reverse] [-rr] [-splitdists number]
      [-[no]skiptested] [-nofailreport]
-     [-[no]bleededge|bleedingedge]
+     [-mirrorurl ...]
      [-warntimeout secs] [-[no]sqllite]
      [-[no]interactive] [-[no]wait] [-[no]batch]
      [-[no]builddirreuse]
@@ -186,9 +161,11 @@ usage: $0
      [-pre dist/module [...]]
      [-cpanconf key=value [-cpanconf ...]]
      [-[no]destroyperl]
-     [-strace|-truss|-ktrace file]
-     [-[no]signalend] [-moduleprintused]
+     [-strace|-truss|-ktrace file] [-[no]typescript]
+     [-[no]signalend] [-moduleprintused] [-hidemod A::B ...]
      [-[no]distroprefs] [-prefsdir ...]
+     [-[no]limits] [-vnc]
+     [-minbuilddiravail bytes|...k|...M|...G]
      [dist ...]
 
 -i: test and install
@@ -197,6 +174,7 @@ usage: $0
 -a: use all installed perls (otherwise some perls will not be used)
 -perl path: use the named perl
 -pv x.y.z: use the perl named by version number
+-thisperl: use the current perl in PATH (useful for perlbrew)
 
 -pre dist/module: module or distribution which should be tested before all others
 -fl file: file with distributions to test
@@ -220,6 +198,8 @@ usage: $0
 -cpanconf key=val: change CPAN configuration variable
 -moduleprintused: report used modules using Module::PrintUsed
 -unkind:      disable the default to run with low priority
+-hidemod: use Devel::Hide to "hide" modules when building. A popular one is
+          -hidemod "Test::Pod Test::Pod::Coverage"
 
 -n:  do not do anything, just show what would be done
 -debug: enable more debugging
@@ -232,6 +212,60 @@ if ($truss && -e $truss) {
 }
 if ($ktrace && -e $ktrace) {
     die "File specified with -ktrace '$ktrace' must not exist";
+}
+if ($use_vncserver && !is_in_path('vncserver')) {
+    die '-vnc specified, but vncserver is not in path';
+}
+TRY_TYPESCRIPT: {
+    if ($do_typescript || !defined $do_typescript) {
+	my $no_typescript_sub = sub {
+	    my $msg = shift;
+	    if ($do_typescript) {
+		die "ERROR: $msg";
+	    } else {
+		warn "INFO: $msg, switch off usage of typescript...\n";
+		$do_typescript = 0;
+		no warnings 'exiting';
+		last TRY_TYPESCRIPT;
+	    }
+	};
+
+	if ($^O !~ m{^(linux|freebsd)$}) {
+	    $no_typescript_sub->("-typescript implemented only for linux and freebsd");
+	}
+	if (!is_in_path('script')) {
+	    $no_typescript_sub->("-typescript specified, but 'script' executable is not in path");
+	}
+	if ($^O eq 'linux') {
+	    if ($do_typescript) {
+		require String::ShellQuote;
+	    } else {
+		eval q{ require String::ShellQuote };
+		if ($@) {
+		    $no_typescript_sub->($@);
+		}
+	    }
+	}
+	# From this point we have all prereqs for typescript operation,
+	# everything else is fatal even with $do_typescript=undef
+	if (!-d $cpan_smoke_typescripts_dir) {
+	    mkdir $cpan_smoke_typescripts_dir
+		or die "Can't create $cpan_smoke_typescripts_dir: $!";
+	}
+	require POSIX;
+	my $now = time;
+	my $typescript_day_dir = "$cpan_smoke_typescripts_dir/" . POSIX::strftime("%Y%m%d", localtime $now);
+	if (!-d $typescript_day_dir) {
+	    mkdir $typescript_day_dir;
+	    if (!-d $typescript_day_dir) {
+		die "Can't create $typescript_day_dir: $!";
+	    }
+	}
+	$typescript_file = $typescript_day_dir . "/" . POSIX::strftime("%H%M%S", localtime) . ".typescript";
+
+	# At this point typescript operations is really possible
+	$do_typescript = 1;
+    }
 }
 my @dist_or_mods = @ARGV;
 if ($do_action eq 'shell' && !@dist_or_mods) {
@@ -297,20 +331,48 @@ if (@pv) {
     push @perls, map { "perl$_" } map { split /,/ } @pv;
 }
 
+if ($do_this_perl) {
+    my $perl = is_in_path("perl");
+    if ($perl) {
+	push @perls, $perl;
+    } else {
+	die "Strange: cannot find 'perl' in PATH?!";
+    }
+}
+
 if (!@perls) {
     if ($all_perls) {
 	my @all_perl_defs;
 
+	my $system_perl;
+	if ($^O eq 'freebsd') {
+	    if (-l "/usr/local/bin/perl5") {
+		$system_perl = readlink "/usr/local/bin/perl5";
+	    }
+	}
+
 	my $latest_blead;
+	my $max_stable_perl_ver;
 	for my $candidate (glob("/usr/local/bin/perl5.*.*")) {
 	    next if !-x $candidate;
+	    if ($system_perl && $candidate eq $system_perl) {
+		if ($do_action eq 'install') {
+		    warn "Skip system perl '$system_perl' for '$do_action' action...\n";
+		    next;
+		}
+		if ($skip_system_perl) {
+		    warn "Skip system perl '$system_perl', required by option...\n";
+		    next;
+		}
+	    }
 	    if (my($ver, $minor) = $candidate =~ m{/perl(5\.(\d+)\.\d+)}) {
 		my $safe_ver = safe_version($ver);
 		my $is_devel = $minor % 2 == 1;
-		if ($^O eq 'freebsd' && $ver eq '5.8.9' && -x "/usr/perl$ver/bin/perl$ver") { # XXX works only for fbsd 8.0! XXX
-		    push @all_perl_defs, ["/usr/perl$ver/bin/perl$ver", $safe_ver];
-		} elsif (!$is_devel) {
+		if (!$is_devel) {
 		    push @all_perl_defs, [$candidate, $safe_ver];
+		    if (!$max_stable_perl_ver || $max_stable_perl_ver < $safe_ver) {
+			$max_stable_perl_ver = $safe_ver;
+		    }
 		} else {
 		    if (!$latest_blead || $latest_blead->[1] < $safe_ver) {
 			$latest_blead = [$candidate, $safe_ver];
@@ -319,9 +381,13 @@ if (!@perls) {
 	    }
 	}
 
-	# Only one blead to test
+	# Test blead only if it's newer than the newest stable perl
 	if ($latest_blead) {
-	    push @all_perl_defs, $latest_blead;
+	    if ($max_stable_perl_ver && $max_stable_perl_ver > $latest_blead->[1]) {
+		warn "Don't test $latest_blead->[0] --- $latest_blead->[1] < $max_stable_perl_ver...";
+	    } else {
+		push @all_perl_defs, $latest_blead;
+	    }
 	}
 
 	# Newest first
@@ -339,6 +405,9 @@ if (!@perls) {
 {
     my @new_perls;
     for my $perl (@perls) {
+	if (-d $perl) {
+	    $perl = "$perl/bin/perl"; # directory specified, guess on perl executable
+	}
 	if (!is_in_path($perl)) {
 	    warn "*** WARNING: $perl is not available, removing from list...\n";
 	} else {
@@ -359,9 +428,9 @@ if ($prefs_dir) {
     $prefs_dir = $CPAN::Config->{prefs_dir};
 }
 
-# to make it easy to copy'n'paste download URLs from search.cpan.org:
-for (@dist_or_mods) {
-    s{^\Qhttp://search.cpan.org/CPAN/authors/id/\E./../}{};
+# to make it easy to copy'n'paste download URLs from a CPAN http mirror:
+for (@dist_or_mods, @pre_dist_or_mods) {
+    s{^http://.*/authors/id/./../}{};
 }
 
 # And allow also partial distribution names without author name
@@ -425,7 +494,6 @@ TRY_PARTIAL_RESOLVE: {
     my %seen_dist_maturity;
     my %seen_dist_released;
     my %seen_mod;
-    my %blacklist_author = map{($_,1)} @blacklist_author;
     for my $dist_or_mod (@dist_or_mods) {
 	my $d_info = CPAN::DistnameInfo->new($dist_or_mod);
 	if (!$d_info || !$d_info->dist) {
@@ -441,10 +509,6 @@ TRY_PARTIAL_RESOLVE: {
 	    if (!$cpanid) {
 		# assume "short" distname
 		($cpanid) = $dist_or_mod =~ m{([^/]+)};
-	    }
-	    if ($cpanid && $blacklist_author{$cpanid}) {
-		warn "Remove blacklisted distribution " . $d_info->distvname . " from list...\n";
-		next;
 	    }
 	    my($dist, $maturity) = ($d_info->dist, $d_info->maturity);
 	    if ($dist && $dist =~ m{/Bundle-Everything-}) { # XXX why it doesn't work through distroprefs?
@@ -513,15 +577,26 @@ if ((   $n                    # no idletermchecker in no exec mode:
     $warntimeout = undef;
 }
 
+(my $short_hostname = hostname) =~ s{\..*}{};
 chomp(my $tty = `tty`);
+(my $short_tty = $tty) =~ s{^.*/}{};
 
 my $idletermchecker_pid;
+my @idletermchecker_cmd;
 if ($warntimeout) {
     if (is_in_path("idletermchecker")) {
 	if ($tty) {
+	    if (is_in_path('pistachio-perl')) {
+		# If pistachio-perl exists then use it, because it has
+		# Tk available, this is not necessarily the case for
+		# the system perl
+		@idletermchecker_cmd = ('pistachio-perl', '-S', 'idletermchecker');
+	    } else {
+		@idletermchecker_cmd = ('idletermchecker');
+	    }
 	    $idletermchecker_pid = fork;
 	    if ($idletermchecker_pid == 0) {
-		exec "idletermchecker", "-tk", "-s", "-timeout", $warntimeout, "-timeout2", $warntimeout+60, "-q", $tty;
+		exec @idletermchecker_cmd, "-tk", "-with-hostname", "-s", "-timeout", $warntimeout, "-timeout2", $warntimeout+60, "-q", $tty;
 		die $!;
 	    }
 	} else {
@@ -551,10 +626,24 @@ $logfh->autoflush(1);
 if ($save_reports) {
     my($tmpfh,$tmpfile) = tempfile(SUFFIX => "_config.ini", UNLINK => 1)
 	or die "Can't create tempfile: $!";
-    open my $ifh, "<", "$ENV{HOME}/.cpanreporter/config.ini"
-	or die "Can't open config.ini: $!";
-    my $workflow_dir = "$ENV{HOME}/var/cpansmoker";
-    my $new_reports_dir = "$workflow_dir/new";
+    my $config_ini_path = "$ENV{HOME}/.cpanreporter/config.ini";
+    open my $ifh, "<", $config_ini_path
+	or die "Can't open $config_ini_path: $!";
+
+    if (!$reports_workflow_dir) {
+	$reports_workflow_dir = $reports_workflow_default_dir;
+	if (!-d $reports_workflow_dir) {
+	    mkpath $reports_workflow_dir;
+	}
+	if (!-d $reports_workflow_dir) {
+	    die "Cannot create $reports_workflow_dir";
+	}
+    } else {
+	if (!-d $reports_workflow_dir) {
+	    die "The directory $reports_workflow_dir does not exist";
+	} # the subdirs may be missing and will be created
+    }
+    my $new_reports_dir = "$reports_workflow_dir/new";
     my $changed_transport = 0;
     my $new_transport_setting = "transport=File $new_reports_dir\n";
     while(<$ifh>) {
@@ -578,14 +667,15 @@ if ($save_reports) {
     close $tmpfh
 	or die "Error while closing: $!";
     for my $dir ($new_reports_dir,
-		 "$workflow_dir/sync",
-		 "$workflow_dir/process",
-		 "$workflow_dir/done",
-		 "$workflow_dir/undecided",
+		 "$reports_workflow_dir/sync",
+		 "$reports_workflow_dir/process",
+		 "$reports_workflow_dir/done",
+		 "$reports_workflow_dir/undecided",
 		) {
-	mkpath $dir if !-d $dir;
+	mkdir $dir if !-d $dir;
     }
     $ENV{PERL_CPAN_REPORTER_CONFIG} = $tmpfile;
+    push @touch_files, $tmpfile;
 } elsif ($no_fail_reports) {
     my $confignofail = "$ENV{HOME}/.cpanreporter/confignofail.ini"; # XXX maybe use PERL_CPAN_REPORTER_DIR?
     if (!-r $confignofail) {
@@ -620,6 +710,24 @@ EOF
 
 my $PERL_CPAN_REPORTER_DIR;
 $PERL_CPAN_REPORTER_DIR = $ENV{PERL_CPAN_REPORTER_DIR} if $ENV{PERL_CPAN_REPORTER_DIR};
+
+my $effective_x11_display;
+if ($use_vncserver) {
+    my @cmd = ('vncserver', $x11_display);
+    warn "INFO: starting vncserver on display $x11_display...\n";
+    system @cmd;
+    if ($? != 0) {
+	die "ERROR: Failure running '@cmd'";
+    }
+    # Do a double check if it's working
+    if (is_in_path('xset')) { # hopefully everywhere installed...
+	system "xset -display $x11_display q >/dev/null 2>&1";
+	if ($? != 0) {
+	    die "ERROR: X11 display check using 'xset' failed, refuse to continue...\n";
+	}
+    }
+    $effective_x11_display = $x11_display;
+}
 
 my $last_xterm_title;
 for my $perl (@perls) {
@@ -724,10 +832,10 @@ EOF
 	if ($logfh) {
 	    print $logfh "[" . scalar(localtime) . "] $log_preamble BEGIN\n";
 	}
-	my $std_title = "smoke($tty): $perl";
+	my $std_title = "smoke($short_hostname:$short_tty): $perl";
 	xterm_conf('-title', $std_title);
 
-	if ($prefs_dir && -d $prefs_dir && -r "$prefs_dir/SlayMakefile") {
+	if ($use_distroprefs && $prefs_dir && -d $prefs_dir && -r "$prefs_dir/SlayMakefile") {
 	    if (is_in_path("slaymake")) {
 		save_pwd {
 		    if (chdir $prefs_dir) {
@@ -759,21 +867,11 @@ EOF
 	my $cpan_shell_init = "";
 	$cpan_shell_init .= q#{ package CPAN::SRTShell; @ISA = $CPAN::Frontend; sub mysleep { shift; sleep shift()/10 }} $CPAN::Frontend="CPAN::SRTShell";#;
 	$cpan_shell_init .= q#CPAN::HandleConfig->load; #;
-	if ($do_action eq 'test' || $do_action eq 'shell') {
-	    if ($^O ne 'MSWin32') { # somehow does not work under Windows
-		$cpan_shell_init .= q{$CPAN::VERSION >= 1.9205 or warn(("*"x70)."\n*** Old CPAN version $CPAN::VERSION\n".("*"x70)."\n"); };
-	    }
-	    $cpan_shell_init .= q{$CPAN::Config->{test_report}=1; };
+	if ($^O ne 'MSWin32') { # somehow does not work under Windows
+	    $cpan_shell_init .= q{$CPAN::VERSION >= 1.9205 or warn(("*"x70)."\n*** Old CPAN version $CPAN::VERSION\n".("*"x70)."\n"); };
 	}
-	if (hostname eq 'devpc01-debian') {
-	    # use local rsync-recent mirror
-	} else {
-	    if ($bleeding_edge) {
-		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(ftp://pause.perl.org/pub/PAUSE/)]; };
-	    } else {
-		$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(http://cpan.cpantesters.org/ ftp://ftp.funet.fi/pub/CPAN/)]; };
-	    }
-	}
+	$cpan_shell_init .= q{$CPAN::Config->{test_report}=1; };
+	$cpan_shell_init .= q{$CPAN::Config->{urllist}=[qw(} . $mirror_url . q{)]; };
 	$cpan_shell_init .= q{$CPAN::FTP::connect_to_internet_ok=1; };
 	# The new feature seems to be problematic:
 	$cpan_shell_init .= q{$CPAN::Config->{threshold_perl5lib_upto} = 9999999; };
@@ -866,41 +964,59 @@ EOF
 	    unshift @cmd, "nice";
 	}
 
-	my $data_limit = 500*1024*1024;
-	my $cputime_limit = 3600*1;
-	my $openfiles_limit = 2048; # the freebsd default is at 22500
-	if (is_in_path("limits") && $^O ne 'MSWin32') {
-	    # on my FreeBSD system, kern.maxfiles is ~ 12000
-	    # -v is needed for FreeBSD 7.x
-	    unshift @cmd, "limits", "-t", $cputime_limit, "-d", $data_limit, "-v", $data_limit, "-n", $openfiles_limit;
-	} elsif (eval { require BSD::Resource; 1 }) {
-	    # Note that limiting in THIS process is not what is
-	    # "correct", but resource limits are inherited by the
-	    # forked processes and such a large data limit is enough
-	    # for the wrapper process, so it works.
-	    #
-	    my $set_limit_if_higher = sub {
-		my($limit, $value, $label) = @_;
-		my $old_limit = BSD::Resource::getrlimit($limit);
-		if (!defined $old_limit || $old_limit == -1) {
-		    if (!BSD::Resource::setrlimit($limit, $value, $value)) {
-			warn "*** WARNING: Could not set resource limit of $label to $value.\n";
+	if ($use_limits) {
+	    my $data_limit = 1024*1024*1024;
+	    my $cputime_limit = 3600*1;
+	    my $openfiles_limit = 2048; # the freebsd default is at 22500
+	    if (is_in_path("limits") && $^O ne 'MSWin32') {
+		# on my FreeBSD system, kern.maxfiles is ~ 12000
+		# -v is needed for FreeBSD 7.x
+		unshift @cmd, "limits", "-t", $cputime_limit, "-d", $data_limit, "-v", $data_limit, "-n", $openfiles_limit;
+	    } elsif (eval { require BSD::Resource; 1 }) {
+		# Note that limiting in THIS process is not what is
+		# "correct", but resource limits are inherited by the
+		# forked processes and such a large data limit is enough
+		# for the wrapper process, so it works.
+		#
+		my $set_limit_if_higher = sub {
+		    my($limit, $value, $label) = @_;
+		    my $old_limit = BSD::Resource::getrlimit($limit);
+		    if (!defined $old_limit || $old_limit == -1) {
+			if (!BSD::Resource::setrlimit($limit, $value, $value)) {
+			    warn "*** WARNING: Could not set resource limit of $label to $value.\n";
+			}
 		    }
-		}
-	    };
-	    # linux does not honor RLIMIT_DATA, but RLIMIT_AS
-	    $set_limit_if_higher->(BSD::Resource::RLIMIT_AS(), $data_limit);
-	    $set_limit_if_higher->(BSD::Resource::RLIMIT_CPU(), $cputime_limit);
-	    $set_limit_if_higher->(BSD::Resource::RLIMIT_NOFILE(), $openfiles_limit);
-	} else {
-	    warn "*** WARNING: Neither limits(1) nor BSD::Resource available, not resource limits possible.\n";
+		};
+		# linux does not honor RLIMIT_DATA, but RLIMIT_AS
+		$set_limit_if_higher->(BSD::Resource::RLIMIT_AS(), $data_limit);
+		$set_limit_if_higher->(BSD::Resource::RLIMIT_CPU(), $cputime_limit);
+		$set_limit_if_higher->(BSD::Resource::RLIMIT_NOFILE(), $openfiles_limit);
+	    } else {
+		warn "*** WARNING: Neither limits(1) nor BSD::Resource available, resource limits cannot be set.\n";
+	    }
 	}
 
 	if ($n) {
 	    unshift @cmd, "echo";
 	}
 
+	if ($do_typescript) {
+	    if ($^O eq 'freebsd') {
+		unshift @cmd, 'script', '-a', $typescript_file;
+	    } elsif ($^O eq 'linux') {
+		my($tmpfh,$tmpfile) = tempfile(UNLINK => 1, SUFFIX => '.typescript.sh') or die $!;
+		print $tmpfh "#!/bin/sh\n";
+		print $tmpfh join(" ", map { String::ShellQuote::shell_quote($_) } @cmd), "\n";
+		close $tmpfh or die $!;
+		chmod 0755, $tmpfile or die "Can't chmod $tmpfile: $!";
+		@cmd = ('script', '-a', '-c', $tmpfile, $typescript_file);
+	    } else {
+		die "should not happen";
+	    }
+	}
+
 	check_disk_free($perl);
+	touch_files();
 
 	print STDERR "# @cmd\n";
 	local %ENV = %ENV;
@@ -916,6 +1032,14 @@ EOF
 	my $save_perl5opt = $ENV{PERL5OPT};
 	if ($module_printused) {
 	    $ENV{PERL5OPT} .= " -MModule::PrintUsed";
+	}
+	if ($hidemod) {
+	    $ENV{PERL5OPT} .= " -MDevel::Hide";
+	    $ENV{DEVEL_HIDE_VERBOSE} = 0;
+	    $ENV{DEVEL_HIDE_PM} = $hidemod;
+	}
+	if ($effective_x11_display) {
+	    $ENV{DISPLAY} = $effective_x11_display;
 	}
 	system @cmd;
 	if ($? & 127) {
@@ -942,6 +1066,8 @@ if ($do_continue && @dist_or_mods) {
 }
 
 END {
+    kill_x11_server();
+
     if ($wait) {
 	print STDERR "Smoking finished, enter RETURN to exit: ";
 	<STDIN>;
@@ -949,7 +1075,7 @@ END {
 
     if (defined $idletermchecker_pid) {
 	#kill KILL => $idletermchecker_pid;
-	system "idletermchecker", "-tk", "-s", "-remove", $tty;
+	system @idletermchecker_cmd, "-tk", "-s", "-remove", $tty;
     }
 
     if ($signal_end && time-$start_time>60 && is_in_path("tkmessage")) {
@@ -963,6 +1089,16 @@ END {
     }
 
     xterm_conf(-title => ($last_xterm_title||"") . " FINISHED");
+}
+
+sub kill_x11_server {
+    if ($use_vncserver && $effective_x11_display) {
+	my @cmd = ('vncserver', '-kill', $effective_x11_display);
+	system @cmd;
+	if ($? != 0) {
+	    warn "WARN: killing vnc server with '@cmd' failed: $?";
+	}
+    }
 }
 
 # from cpan_allpackages and changed (seek magic)
@@ -1055,43 +1191,26 @@ sub check_disk_free {
 	die "Should not happen: cannot parse build directory using <@cmd>";
     }
     if (!-d $build_dir) {
-	die "Build directory <$build_dir> for perl <$perl> does not exist";
+	die <<EOF;
+Build directory <$build_dir> for perl <$perl> does not exist.
+Usually this can be fixed by running a dummy build once, e.g.
+
+    $perl -MCPAN -eshell
+    test Kwalify
+    quit
+
+EOF
+    }
+    if ($min_build_dir_avail) {
+	$min_build_dir_avail =~ s{([\d\.]+)([kMG])}{$1*($2 eq "k" ? 1024 : $2 eq "M" ? 1024**2 : $2 eq "G" ? 1024**3 : die)}e;
+	if ($min_build_dir_avail !~ m{^[\d\.]+$}) {
+	    die "(expanded) -minbuilddiravail value '$min_build_dir_avail' does not look like a number";
+	}
     }
     if (eval { require Filesys::DfPortable; 1 }) {
-	while () {
-	    my $build_ref = Filesys::DfPortable::dfportable($build_dir);
-	    if (!$build_ref) {
-		die "Cannot get filesys information for $build_dir";
-	    }
-	    last if ($build_ref->{bavail} > $min_build_dir_avail);
-	    print STDERR qq{Less than $min_build_dir_avail bytes on $build_dir available: $build_ref->{bavail}.
-Please cleanup the directory and go on with <RETURN>: };
-	    if (is_interactive()) {
-		<STDIN>;
-		sleep 1; # help against overruns
-	    } else {
-		print STDERR qq{(sleeping for 60 seconds...)\n};
-		sleep 60;
-	    }
-	}
-
+	check_disk_free_directory($build_dir, $min_build_dir_avail, $min_dir_inodes_percent);
 	require File::Spec;
-	while () {
-	    my $tmp_ref = Filesys::DfPortable::dfportable(File::Spec->tmpdir);
-	    if (!$tmp_ref) {
-		die "Cannot get filesys information for " . File::Spec->tmpdir;
-	    }
-	    last if ($tmp_ref->{bavail} > $min_tmp_dir_avail);
-	    print STDERR qq{Less than $min_tmp_dir_avail bytes on " . File::Spec->tmpdir . " available: $tmp_ref->{bavail}.
-Please cleanup the directory and go on with <RETURN>: };
-	    if (is_interactive()) {
-		<STDIN>;
-		sleep 1; # help against overruns
-	    } else {
-		print STDERR qq{(sleeping for 60 seconds...)\n};
-		sleep 60;
-	    }
-	}
+	check_disk_free_directory(File::Spec->tmpdir, $min_tmp_dir_avail, $min_dir_inodes_percent);
     } else {
 	warn <<EOF;
 ***************************************************************************
@@ -1101,6 +1220,71 @@ Please cleanup the directory and go on with <RETURN>: };
 *
 ***************************************************************************
 EOF
+    }
+}
+
+sub check_disk_free_directory {
+    my($dir, $min_space_free_bytes, $min_inode_free_percent) = @_;
+
+    while () {
+	my $dfres = Filesys::DfPortable::dfportable($dir);
+	if (!$dfres) {
+	    die "Cannot get filesys information for $dir";
+	}
+
+	my $space_ok = 1;
+	my $inode_ok = 1;
+
+	my $inode_avail_percent;
+	{
+	    if ($dfres->{files}) {
+		$inode_avail_percent = $dfres->{favail} / $dfres->{files} * 100;
+		if ($inode_avail_percent < $min_inode_free_percent) {
+		    $inode_ok = 0;
+		}
+	    }
+	}
+
+	if ($dfres->{bavail} < $min_space_free_bytes) {
+	    $space_ok = 0;
+	}
+
+	return 1 if $space_ok && $inode_ok;
+
+	if (!$space_ok) {
+	    print STDERR qq{Less than $min_space_free_bytes bytes on $dir available: $dfres->{bavail}.\n};
+	}
+	if (!$inode_ok) {
+	    print STDERR qq{Less than $min_inode_free_percent% inodes available on $dir: $inode_avail_percent%.\n};
+	}
+	print STDERR qq{Please cleanup the directory and go on with <RETURN>: };
+	if (is_interactive()) {
+	    local $SIG{ALRM} = sub { die "Timeout" };
+	    alarm(60*10);
+	    eval {
+		<STDIN>;
+	    };
+	    alarm(0);
+	    if ($@ && $@ =~ /Timeout/) {
+		warn "Timeout (at " . POSIX::strftime("%H:%M:%S", localtime) . "), check again if disk space is available...\n";
+	    }
+	    sleep 1; # help against overruns
+	} else {
+	    print STDERR qq{(sleeping for 60 seconds...)\n};
+	    sleep 60;
+	}
+    }
+}
+
+# A list of files, probably in temporary directory, which need regular touch
+# --- otherwise other cleanup jobs could remove them.
+sub touch_files {
+    for my $file (@touch_files) {
+	if (-e $file) {
+	    my $now = time;
+	    utime $now, $now, $file
+		or warn "Can't touch $file: $!";
+	}
     }
 }
 
@@ -1156,15 +1340,6 @@ BEGIN {
 # REPO NAME save_pwd /home/e/eserte/work/srezic-repository 
 # REPO MD5 0f7791cf8e3b62744d7d5cfbd9ddcb07
 
-=head2 save_pwd(sub { ... })
-
-=for category File
-
-Save the current directory and assure that outside the block the old
-directory will still be valid.
-
-=cut
-
 sub save_pwd (&) {
     my $code = shift;
     require Cwd;
@@ -1181,14 +1356,6 @@ sub save_pwd (&) {
 # REPO BEGIN
 # REPO NAME is_interactive /home/e/eserte/work/srezic-repository 
 # REPO MD5 3c8170d60ac3c3648e9b93a995ec6615
-
-=head2 is_interactive()
-
-=for category Term
-
-Return true, if the process has a terminal.
-
-=cut
 
 sub is_interactive {
     if ($^O eq 'MSWin32' || !eval { require POSIX; 1 }) {
@@ -1289,7 +1456,7 @@ available, then the normal non-sqlite internal storage will be used.
 
 Specify a file with the listed distributions/modules.
 
-=imte -builddirreuse
+=item -builddirreuse
 
 set the build_dir_reuse flag of CPAN.pm. Not well tested.
 
