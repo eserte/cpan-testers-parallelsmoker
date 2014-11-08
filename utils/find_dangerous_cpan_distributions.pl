@@ -4,7 +4,7 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2009 Slaven Rezic. All rights reserved.
+# Copyright (C) 2009,2014 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -37,13 +37,29 @@ my %resolved = ('CGI'  => ['3.33', '3.34'], # https://rt.cpan.org/Ticket/Display
 				      ],
 		'perl' => 1, # CPAN.pm does not install perl anyway
 	       );
+
+my %seen_dist;
+
+my %special_comparison =
+    (
+     'Gearman-XS' => sub {
+	 # Gearman-XS-0.7 is probably older than 0.15
+	 my($dist) = @_;
+	 my @dists = sort {
+	     if    ($a eq '0.7') { return +1 }
+	     elsif ($b eq '0.7') { return -1 }
+	     else {
+		 CPAN::Version->vcmp($b, $a);
+	     }
+	 } keys %{ $seen_dist{$dist} };
+     },
+    );
+
 for my $dist (keys %resolved) {
     if (ref $resolved{$dist}) {
 	$resolved{$dist} = { map {($_,1)} @{ $resolved{$dist} } }; # create a set out of it
     }
 }
-
-my %seen_dist;
 
 my $pcp = Parse::CPAN::Packages::Fast->new($packages_file);
 for my $p ($pcp->distributions) {
@@ -72,7 +88,12 @@ for my $dist (keys %seen_dist) {
 if ($do_filter || $do_distropref) {
     # The newest one is not problematic:
     for my $dist (@problematic) {
-	my($newest) = sort { CPAN::Version->vcmp($b, $a) } keys %{ $seen_dist{$dist} };
+	my $newest;
+	if (exists $special_comparison{$dist}) {
+	    ($newest) = $special_comparison{$dist}->($dist);
+	} else {
+	    ($newest) = sort { CPAN::Version->vcmp($b, $a) } keys %{ $seen_dist{$dist} };
+	}
 	delete $seen_dist{$dist}->{$newest};
     }
 
