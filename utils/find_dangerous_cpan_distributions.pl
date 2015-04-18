@@ -100,7 +100,10 @@ if ($do_filter || $do_distropref) {
     if ($do_distropref) {
 	print <<EOF;
 ---
-comment: dangerous CPAN distributions which may cause downgrades, automatically created by $0
+comment: |-
+  Dangerous CPAN distributions which may cause downgrades.
+  See also http://cpanold.chorny.net/ for a web interface for similar results.
+  Automatically created by $0
 disabled: 1
 match:
   distribution: |-
