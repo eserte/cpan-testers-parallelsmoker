@@ -4,7 +4,7 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2009,2014 Slaven Rezic. All rights reserved.
+# Copyright (C) 2009,2014,2015 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -29,6 +29,11 @@ GetOptions("packages=s" => \$packages_file,
 	   "distropref" => \$do_distropref,
 	  )
     or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter] [-report]";
+
+my %ignore = map {($_=>1)}
+    (
+     'NEZUMI/Unicode-LineBreak-2015.07.16.tar.gz', # https://rt.cpan.org/Ticket/Display.html?id=106859
+    );
 
 my %resolved = ('CGI'  => ['3.33', '3.34'], # https://rt.cpan.org/Ticket/Display.html?id=48425 (not dangerous)
 		'Geo-Coder-US' => ['0.21'], # large changes in code base, removal of a module
@@ -121,6 +126,7 @@ EOF
 	my $first = shift @problematic_dist;
 	print "      \\Q$first\\E\n";
 	for my $problematic_dist (@problematic_dist) {
+	    next if $ignore{$problematic_dist};
 	    print "     |\\Q$problematic_dist\\E\n";
 	}
 	print "    )\$\n";
