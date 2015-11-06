@@ -16,9 +16,11 @@ die "Cannot find find_dangerous_cpan_distributions.pl" if !-x $find_dangerous_cp
 
 my @perls;
 my $years_range_in;
+my $output_dists;
 GetOptions('perl=s@' => \@perls,
 	   "years=s" => \$years_range_in,
-	  ) or die "usage?";
+	   'dists'   => \$output_dists,
+	  ) or die "usage: $0 [-dists] -perl /path/to/perl [-perl ...] -years YYYY.. | -years YYYY..YYYY\n";
 sub usage_years_range () { die "Please specify years range in the form -years YYYY..YYYY or -years YYYY.." }
 $years_range_in or usage_years_range;
 @perls or die "Please specify -perl /path/to/perl";
@@ -113,7 +115,7 @@ warn "Various filters (FAIL, year, dangerous...)...\n";
     close $ifh
 	or die $!;
 
-    my %seen;
+    my %seen; # package or distribution
     for my $date_dist (sort { $b->[0] cmp $a->[0] } values %date_dists) {# sort by date, newest first
 	my(@fields) = @$date_dist;
 	my $dist = $fields[1];
@@ -121,31 +123,38 @@ warn "Various filters (FAIL, year, dangerous...)...\n";
 	if ($dist =~ m{^(.)(.)}) {
 	    $dist = "$1/$1$2/$dist";
 	    if (my $dist_o = eval { $pf->distribution($dist) }) {
-		# Translate distname into the best module name
-		my $primary_package;
-
-		my $maybe_primary_package = $dist_o->dist;
-		$maybe_primary_package =~ s{-}{::}g; # e.g. ExtUtils-MakeMaker -> ExtUtils::MakeMaker
-
-		my @packages;
-		for my $contains ($dist_o->contains) {
-		    my $package = $contains->package;
-		    if ($package eq $maybe_primary_package) {
-			$primary_package = $package;
-			last;
+		if ($output_dists) {
+		    my $distname = $dist_o->cpanid . '/' . $dist_o->filename;
+		    if (!$seen{$distname}++) {
+			print $distname, "\n";
 		    }
-		    push @packages, $package;
-		}
+		} else {
+		    # Translate distname into the best module name
+		    my $primary_package;
 
-		if (!defined $primary_package) {
-		    # find shortest module here
-		    # XXX Bundles should get a lower priority XXX
-		    @packages = sort { length($a) <=> length($b) } @packages;
-		    $primary_package = $packages[0];
-		}
+		    my $maybe_primary_package = $dist_o->dist;
+		    $maybe_primary_package =~ s{-}{::}g; # e.g. ExtUtils-MakeMaker -> ExtUtils::MakeMaker
 
-		if (!$seen{$primary_package}++) {
-		    print $primary_package, "\n";
+		    my @packages;
+		    for my $contains ($dist_o->contains) {
+			my $package = $contains->package;
+			if ($package eq $maybe_primary_package) {
+			    $primary_package = $package;
+			    last;
+			}
+			push @packages, $package;
+		    }
+
+		    if (!defined $primary_package) {
+			# find shortest module here
+			# XXX Bundles should get a lower priority XXX
+			@packages = sort { length($a) <=> length($b) } @packages;
+			$primary_package = $packages[0];
+		    }
+
+		    if (!$seen{$primary_package}++) {
+			print $primary_package, "\n";
+		    }
 		}
 	    }
 	}
