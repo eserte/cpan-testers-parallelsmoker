@@ -4,7 +4,7 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2009,2014,2015 Slaven Rezic. All rights reserved.
+# Copyright (C) 2009,2014,2015,2017 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -33,6 +33,11 @@ GetOptions("packages=s" => \$packages_file,
 my %ignore = map {($_=>1)}
     (
      'NEZUMI/Unicode-LineBreak-2015.07.16.tar.gz', # https://rt.cpan.org/Ticket/Display.html?id=106859
+    );
+
+my %add_unconditionaly = map {($_=>1)}
+    (
+     'GMCHARLT/MARC-XML-0.93.tar.gz', # conflicts with another MARC-XML dist, and was renamed to MARC-File-XML
     );
 
 my %resolved = ('CGI'  => ['3.33', '3.34'], # https://rt.cpan.org/Ticket/Display.html?id=48425 (not dangerous)
@@ -71,6 +76,9 @@ for my $p ($pcp->distributions) {
     my $dist = $p->dist;
     next if !defined $dist;
     my $version = $p->version; $version = '???' if !defined $version;
+
+    (my $short_pathname = $p->pathname) =~ s{^./../}{};
+    next if $add_unconditionaly{$short_pathname};
 
 ##XXX
 #    # Is this already resolved?
@@ -127,6 +135,9 @@ EOF
 	print "      \\Q$first\\E\n";
 	for my $problematic_dist (@problematic_dist) {
 	    next if $ignore{$problematic_dist};
+	    print "     |\\Q$problematic_dist\\E\n";
+	}
+	for my $problematic_dist (keys %add_unconditionaly) {
 	    print "     |\\Q$problematic_dist\\E\n";
 	}
 	print "    )\$\n";
