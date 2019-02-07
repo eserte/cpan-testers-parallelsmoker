@@ -117,6 +117,7 @@ comment: |-
   Dangerous CPAN distributions which may cause downgrades.
   See also http://cpanold.chorny.net/ for a web interface for similar results.
   Automatically created by $0
+  Script on github: https://github.com/eserte/cpan-testers-parallelsmoker/blob/master/utils/find_dangerous_cpan_distributions.pl
 disabled: 1
 match:
   distribution: |-
