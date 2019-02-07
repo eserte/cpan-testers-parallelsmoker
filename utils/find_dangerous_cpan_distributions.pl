@@ -4,7 +4,7 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2009,2014,2015,2017 Slaven Rezic. All rights reserved.
+# Copyright (C) 2009,2014,2015,2017,2019 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -28,7 +28,7 @@ GetOptions("packages=s" => \$packages_file,
 	   "report" => \$do_report,
 	   "distropref" => \$do_distropref,
 	  )
-    or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter] [-report]";
+    or die "usage: $0 [-packages /path/to/02packages.details.txt.gz] [-filter] [-report] [-distropref]";
 
 my %ignore = map {($_=>1)}
     (
